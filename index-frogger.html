@@ -164,36 +164,26 @@
     </div>
 
     <script>
-        // Initialize Web Audio API
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Initialize audio
         let backgroundMusic = null;
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Create meditation-like background music
         function createBackgroundMusic() {
-            const frequencies = [196.00, 220.00, 246.94, 293.66, 329.63]; // G3, A3, B3, D4, E4 pentatonic scale
-            frequencies.forEach(freq => {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-                
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // Lower volume for background
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.start();
-                
-                // Create slow pulsing effect
-                const lfoFreq = 0.1 + Math.random() * 0.1; // Random between 0.1-0.2 Hz
-                setInterval(() => {
-                    gainNode.gain.setTargetAtTime(0.05, audioContext.currentTime, 0.1);
-                    setTimeout(() => {
-                        gainNode.gain.setTargetAtTime(0.1, audioContext.currentTime, 0.1);
-                    }, 2000);
-                }, 1000 / lfoFreq);
-            });
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+                backgroundMusic = null;
+            }
+            
+            backgroundMusic = new Audio('mystical-china-274004.mp3');
+            backgroundMusic.loop = true;
+            backgroundMusic.volume = 0.3; // Set initial volume to 30%
+            
+            // Start playing when user interacts (to comply with browser autoplay policies)
+            try {
+                backgroundMusic.play().catch(e => console.log('Music play error:', e));
+            } catch (e) {
+                console.log('Music initialization error:', e);
+            }
         }
 
         // Function to create a beep sound
@@ -372,21 +362,67 @@
                 return this.lives <= 0;
             }
 
+            drawHeart(x, y, size) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.bezierCurveTo(
+                    x - size / 2, y - size / 2,
+                    x - size, y + size / 3,
+                    x, y + size
+                );
+                this.ctx.bezierCurveTo(
+                    x + size, y + size / 3,
+                    x + size / 2, y - size / 2,
+                    x, y
+                );
+                this.ctx.fill();
+            }
+
             draw() {
+                this.ctx.save();
+                this.ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                
                 if (this.isAnimatingDeath) {
                     // Flash red and white for death animation
                     const color = this.deathAnimationFrame % 2 === 0 ? '#FF0000' : '#FFFFFF';
                     this.ctx.fillStyle = color;
-                    this.ctx.fillRect(this.x - 5, this.y - 5, this.width + 10, this.height + 10);
+                    this.ctx.fillRect(-this.width/2 - 5, -this.height/2 - 5, this.width + 10, this.height + 10);
                     this.deathAnimationFrame++;
                     
                     if (this.deathAnimationFrame >= 10) {
                         this.deathAnimationFrame = 0;
                     }
                 } else {
-                    this.ctx.fillStyle = '#FF69B4'; // Pink color for the player
-                    this.ctx.fillRect(this.x, this.y, this.width, this.height);
+                    // Draw sushi character
+                    const scale = 0.75; // Scale to fit the 30x30 box
+                    
+                    // Draw the sushi base (triangle for rice part)
+                    this.ctx.fillStyle = '#FFFFFF';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(-40 * scale, 20 * scale);
+                    this.ctx.lineTo(0, -40 * scale);
+                    this.ctx.lineTo(40 * scale, 20 * scale);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+
+                    // Draw the nori strip
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.fillRect(-20 * scale, 5 * scale, 40 * scale, 15 * scale);
+
+                    // Draw heart eyes
+                    this.ctx.fillStyle = '#000000';
+                    this.drawHeart(-10 * scale, -5 * scale, 8 * scale);
+                    this.drawHeart(10 * scale, -5 * scale, 8 * scale);
+
+                    // Draw smile
+                    this.ctx.strokeStyle = '#FFFFFF';
+                    this.ctx.lineWidth = 2 * scale;
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 10 * scale, 15 * scale, 0, Math.PI);
+                    this.ctx.stroke();
                 }
+                
+                this.ctx.restore();
             }
         }
 
@@ -726,8 +762,8 @@
                     game = new Game();
                     updateHighScores();
                     
-                    // Start background music
-                    createBackgroundMusic();
+                    // Start background music with a slight delay to ensure proper initialization
+                    setTimeout(createBackgroundMusic, 100);
                 }
             }
 
