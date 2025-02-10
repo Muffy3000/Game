@@ -16,28 +16,26 @@
         }
 
         .game-container {
-            position: relative;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
         }
 
         .game-info {
-            position: absolute;
-            top: -50px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
+            width: 150px;
             color: white;
             font-size: 24px;
             font-weight: bold;
-            padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            background: #FF69B4;
             border-radius: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
         }
 
-        .game-info span {
-            padding: 5px 15px;
-            border-radius: 5px;
+        .game-info div {
+            margin: 10px 0;
+            text-align: center;
         }
 
         #gameCanvas {
@@ -48,21 +46,17 @@
 </head>
 <body>
     <div class="game-container">
-        <div class="game-info">
-            <span>Score: <span id="score">0</span></span>
-            <span>Lives: <span id="lives">3</span></span>
-        </div>
         <canvas id="gameCanvas"></canvas>
+        <div class="game-info">
+            <div>Score:<br><span id="score">0</span></div>
+            <div>Lives:<br><span id="lives">3</span></div>
+        </div>
     </div>
 
     <script>
-        // Create collision sound
-        const collisionSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgA');
+        // Create collision sound (shorter, more reliable format)
+        const collisionSound = new Audio('data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPz8/Pz8/TU1NTU1NW1tbW1tbaGhoaGhoaHd3d3d3d4aGhoaGhpSUlJSUlKMjIyMjIyMwMDAwMDA/Pz8/Pz9NTU1NTU1bW1tbW1toaGhoaGh3d3d3d3eGhoaGhoaUlJSUlJSjAAAAAAAA//tQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQUg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tQxCmD1AACpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQ8g9AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
         collisionSound.volume = 0.3;
-
-        // Death animation sprite
-        const deathSprite = new Image();
-        deathSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAHlBMVEUAAAD////////////////////////////////////Z6AnKAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGHRFWHRTb2Z0d2FyZQBwYWludC5uZXQgNC4xLjVkR1hSAAAAO0lEQVRIx2NgGAWjYBSMglEwCkbBKBgFo2AUjIJRMApGwSgYBaNgFIyCUTAKRsEoGAWjYBSMglEwCkYyCwAhtTrBzKWN9AAAAABJRU5ErkJggg==';
 
         // Player class
         class Player {
@@ -72,7 +66,7 @@
                 this.width = 30;
                 this.height = 30;
                 this.isAnimatingDeath = false;
-                this.deathFrame = 0;
+                this.deathAnimationFrame = 0;
                 this.reset();
             }
 
@@ -80,9 +74,11 @@
                 this.x = (this.canvas.width - this.width) / 2;
                 this.y = this.canvas.height - this.height - 10;
                 this.lives = 3;
+                this.isAnimatingDeath = false;
             }
 
             move(direction) {
+                if (this.isAnimatingDeath) return;
                 const STEP = 40;
                 switch(direction) {
                     case 'up':
@@ -101,35 +97,43 @@
             }
 
             loseLife() {
+                if (this.isAnimatingDeath) return false;
+                
                 this.lives--;
                 document.getElementById('lives').textContent = this.lives;
                 
-                // Play collision sound
-                collisionSound.currentTime = 0;
-                collisionSound.play();
+                try {
+                    collisionSound.currentTime = 0;
+                    collisionSound.play().catch(e => console.log('Audio play failed:', e));
+                } catch (e) {
+                    console.log('Audio error:', e);
+                }
                 
-                // Start death animation
                 this.isAnimatingDeath = true;
-                this.deathFrame = 0;
+                this.deathAnimationFrame = 0;
                 
                 if (this.lives > 0) {
                     setTimeout(() => {
                         this.x = (this.canvas.width - this.width) / 2;
                         this.y = this.canvas.height - this.height - 10;
                         this.isAnimatingDeath = false;
-                    }, 500);
+                    }, 1000);
                 }
+                
                 return this.lives <= 0;
             }
 
             draw() {
                 if (this.isAnimatingDeath) {
-                    this.ctx.drawImage(
-                        deathSprite,
-                        this.deathFrame * 32, 0, 32, 32,
-                        this.x - 10, this.y - 10, this.width + 20, this.height + 20
-                    );
-                    this.deathFrame = (this.deathFrame + 1) % 8;
+                    // Flash red and white for death animation
+                    const color = this.deathAnimationFrame % 2 === 0 ? '#FF0000' : '#FFFFFF';
+                    this.ctx.fillStyle = color;
+                    this.ctx.fillRect(this.x - 5, this.y - 5, this.width + 10, this.height + 10);
+                    this.deathAnimationFrame++;
+                    
+                    if (this.deathAnimationFrame >= 10) {
+                        this.deathAnimationFrame = 0;
+                    }
                 } else {
                     this.ctx.fillStyle = '#0F0';
                     this.ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -139,7 +143,7 @@
 
         // Obstacle class
         class Obstacle {
-            constructor(canvas, y, speed, width, direction) {
+            constructor(canvas, y, speed, width, direction, color) {
                 this.canvas = canvas;
                 this.ctx = canvas.getContext('2d');
                 this.width = width;
@@ -147,6 +151,7 @@
                 this.y = y;
                 this.speed = speed;
                 this.direction = direction;
+                this.color = color;
                 this.x = direction === 1 ? -this.width : canvas.width;
             }
 
@@ -160,7 +165,7 @@
             }
 
             draw() {
-                this.ctx.fillStyle = '#F00';
+                this.ctx.fillStyle = this.color;
                 this.ctx.fillRect(this.x, this.y, this.width, this.height);
             }
 
@@ -192,10 +197,10 @@
 
             initObstacles() {
                 const lanes = [
-                    { y: 100, speed: 2, width: 60, direction: 1 },
-                    { y: 200, speed: 3, width: 80, direction: -1 },
-                    { y: 300, speed: 4, width: 50, direction: 1 },
-                    { y: 400, speed: 2.5, width: 70, direction: -1 }
+                    { y: 100, speed: 2, width: 60, direction: 1, color: '#FF0000' },    // Red
+                    { y: 200, speed: 3, width: 80, direction: -1, color: '#FFA500' },   // Orange
+                    { y: 300, speed: 4, width: 50, direction: 1, color: '#FFFF00' },    // Yellow
+                    { y: 400, speed: 2.5, width: 70, direction: -1, color: '#00FF00' }  // Green
                 ];
 
                 lanes.forEach(lane => {
@@ -206,22 +211,8 @@
                                 lane.y,
                                 lane.speed,
                                 lane.width,
-                                lane.direction
-                            )
-                        );
-                    }
-                });
-            }
-
-            setupControls() {
-                document.addEventListener('keydown', (e) => {
-                    if (this.gameOver) {
-                            new Obstacle(
-                                this.canvas,
-                                lane.y,
-                                lane.speed,
-                                lane.width,
-                                lane.direction
+                                lane.direction,
+                                lane.color
                             )
                         );
                     }
@@ -252,22 +243,20 @@
                             break;
                     }
 
-                    // Check if player reached the top
                     if (this.player.y <= 50) {
-                        // Increment score and reset position
                         this.score++;
                         document.getElementById('score').textContent = this.score;
-                        // Reset position after reaching goal
                         this.player.y = this.canvas.height - this.player.height - 10;
                     }
                 });
             }
 
             checkCollisions() {
+                if (this.player.isAnimatingDeath) return;
+                
                 for (let obstacle of this.obstacles) {
                     if (obstacle.collidesWith(this.player)) {
                         if (this.player.loseLife()) {
-                            // Only game over when all lives are lost
                             this.gameOver = true;
                         }
                         break;
@@ -321,7 +310,6 @@
             }
         }
 
-        // Start the game when the page loads
         window.onload = () => {
             new Game();
         };
