@@ -213,7 +213,13 @@
                     if (this.player.y <= 50) {
                         this.score++;
                         document.getElementById('score').textContent = this.score;
-                        this.player.y = this.canvas.height - this.player.height - 10;
+                        
+                        // Reset position and score after reaching 3 points
+                        if (this.score >= 3) {
+                            this.score = 0;
+                            document.getElementById('score').textContent = this.score;
+                            this.player.y = this.canvas.height - this.player.height - 10;
+                        }
                     }
                 });
             }
@@ -223,6 +229,9 @@
                     if (obstacle.collidesWith(this.player)) {
                         if (this.player.loseLife()) {
                             this.gameOver = true;
+                        } else {
+                            // Reset position when hit by obstacle
+                            this.player.y = this.canvas.height - this.player.height - 10;
                         }
                         break;
                     }
