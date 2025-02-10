@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Frogger Game</title>
     <style>
+        /* All existing styles remain the same */
         body {
             margin: 0;
             display: flex;
@@ -61,16 +62,16 @@
 
         .game-container {
             display: flex;
-            gap: 20px;
-            align-items: flex-start;
+            gap: 15px;
+            align-items: center;
         }
 
         .game-info {
-            width: 150px;
+            width: 130px;
             color: white;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            padding: 20px;
+            padding: 15px;
             background: #FF69B4;
             border-radius: 10px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
@@ -78,37 +79,47 @@
         }
 
         .high-scores {
-            width: 200px;
+            width: 160px;
             color: white;
-            font-size: 16px;
-            padding: 20px;
+            font-size: 14px;
+            padding: 12px;
             background: #4169E1;
             border-radius: 10px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            margin-bottom: 10px;
         }
 
         .all-time-high {
-            width: 200px;
+            width: 160px;
             color: white;
-            font-size: 20px;
-            padding: 20px;
+            font-size: 16px;
+            padding: 12px;
             background: #00AA00;
             border-radius: 10px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-            margin-top: 20px;
         }
 
         .scores-list {
             list-style: none;
             padding: 0;
-            margin: 10px 0;
+            margin: 8px 0;
         }
 
         .scores-list li {
-            margin: 5px 0;
-            font-size: 14px;
+            margin: 3px 0;
+            font-size: 13px;
+        }
+
+        .high-scores h3 {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+
+        .all-time-high h3 {
+            margin: 8px 0;
+            font-size: 15px;
         }
 
         .game-info div {
@@ -155,6 +166,35 @@
     <script>
         // Initialize Web Audio API
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let backgroundMusic = null;
+
+        // Create meditation-like background music
+        function createBackgroundMusic() {
+            const frequencies = [196.00, 220.00, 246.94, 293.66, 329.63]; // G3, A3, B3, D4, E4 pentatonic scale
+            frequencies.forEach(freq => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // Lower volume for background
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                
+                // Create slow pulsing effect
+                const lfoFreq = 0.1 + Math.random() * 0.1; // Random between 0.1-0.2 Hz
+                setInterval(() => {
+                    gainNode.gain.setTargetAtTime(0.05, audioContext.currentTime, 0.1);
+                    setTimeout(() => {
+                        gainNode.gain.setTargetAtTime(0.1, audioContext.currentTime, 0.1);
+                    }, 2000);
+                }, 1000 / lfoFreq);
+            });
+        }
 
         // Function to create a beep sound
         function createBeepSound(frequency, duration, type = 'sine') {
@@ -232,12 +272,12 @@
             const allTimeHighDiv = document.getElementById('allTimeHigh');
 
             highScoresList.innerHTML = highScores
-                .slice(0, 5)
+                .slice(0, 3)
                 .map(score => `<li>${score.player} - ${score.score}</li>`)
                 .join('');
 
             bestTimesList.innerHTML = bestTimes
-                .slice(0, 5)
+                .slice(0, 3)
                 .map(time => `<li>${time.player} - ${time.time}s</li>`)
                 .join('');
 
@@ -373,9 +413,76 @@
                 }
             }
 
+            getComplementaryColor() {
+                // Convert hex to RGB
+                const hex = this.color.replace('#', '');
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                
+                // Get complementary color
+                const compR = 255 - r;
+                const compG = 255 - g;
+                const compB = 255 - b;
+                
+                // Convert back to hex
+                return `#${((1 << 24) + (compR << 16) + (compG << 8) + compB).toString(16).slice(1)}`;
+            }
+
+            drawHeart(x, y, size) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y + size / 4);
+                this.ctx.bezierCurveTo(x, y, x - size / 2, y, x - size / 2, y + size / 4);
+                this.ctx.bezierCurveTo(x - size / 2, y + size / 2, x, y + size * 3/4, x, y + size * 3/4);
+                this.ctx.bezierCurveTo(x, y + size * 3/4, x + size / 2, y + size / 2, x + size / 2, y + size / 4);
+                this.ctx.bezierCurveTo(x + size / 2, y, x, y, x, y + size / 4);
+                this.ctx.fill();
+            }
+
+            drawStar(x, y, size) {
+                const spikes = 5;
+                const outerRadius = size;
+                const innerRadius = size / 2;
+                
+                let rot = Math.PI / 2 * 3;
+                let step = Math.PI / spikes;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y - outerRadius);
+                
+                for (let i = 0; i < spikes; i++) {
+                    x = this.x + Math.cos(rot) * outerRadius;
+                    y = this.y + Math.sin(rot) * outerRadius;
+                    this.ctx.lineTo(x, y);
+                    rot += step;
+
+                    x = this.x + Math.cos(rot) * innerRadius;
+                    y = this.y + Math.sin(rot) * innerRadius;
+                    this.ctx.lineTo(x, y);
+                    rot += step;
+                }
+                
+                this.ctx.lineTo(x, y - outerRadius);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
             draw() {
+                // Draw main obstacle
                 this.ctx.fillStyle = this.color;
                 this.ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Draw decorations in complementary color
+                this.ctx.fillStyle = this.getComplementaryColor();
+                
+                // Draw hearts
+                const heartSize = 10;
+                this.drawHeart(this.x + heartSize, this.y + this.height/2, heartSize);
+                this.drawHeart(this.x + this.width - heartSize, this.y + this.height/2, heartSize);
+                
+                // Draw star in the middle
+                const starSize = 12;
+                this.drawStar(this.x + this.width/2, this.y + this.height/2, starSize);
             }
 
             collidesWith(player) {
@@ -480,14 +587,14 @@
                 
                 for (let obstacle of this.obstacles) {
                     if (obstacle.collidesWith(this.player)) {
-                if (this.player.loseLife()) {
-                    this.gameOver = true;
-                    try {
-                        gameOverSound.play();
-                    } catch (e) {
-                        console.log('Game over sound error:', e);
-                    }
-                }
+                        if (this.player.loseLife()) {
+                            this.gameOver = true;
+                            try {
+                                gameOverSound.play();
+                            } catch (e) {
+                                console.log('Game over sound error:', e);
+                            }
+                        }
                         break;
                     }
                 }
@@ -618,6 +725,9 @@
                     modal.style.display = 'none';
                     game = new Game();
                     updateHighScores();
+                    
+                    // Start background music
+                    createBackgroundMusic();
                 }
             }
 
