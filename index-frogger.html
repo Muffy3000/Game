@@ -153,12 +153,72 @@
     </div>
 
     <script>
-        // Create sounds
-        const collisionSound = new Audio('data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPz8/Pz8/TU1NTU1NW1tbW1tbaGhoaGhoaHd3d3d3d4aGhoaGhpSUlJSUlKMjIyMjIyMwMDAwMDA/Pz8/Pz9NTU1NTU1bW1tbW1toaGhoaGh3d3d3d3eGhoaGhoaUlJSUlJSjAAAAAAAA//tQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQUg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tQxCmD1AACpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQ8g9AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
-        collisionSound.volume = 0.3;
+        // Initialize Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-        const scoreSound = new Audio('data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAAEsAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx3d3d3d4mJiYmJlZWVlZWhoaGhoaGhoaGhtbW1tbXBwcHBwc3Nzc3N2tra2tre3t7e3urq6urq/Pz8/Pz8//tQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQUg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tQxCmD1AACpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQ8g9AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
-        scoreSound.volume = 0.3;
+        // Function to create a beep sound
+        function createBeepSound(frequency, duration, type = 'sine') {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            return {
+                play: () => {
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + duration);
+                }
+            };
+        }
+
+        // Function to create ascending/descending notes
+        function createArpeggio(frequencies, duration, ascending = true) {
+            const time = audioContext.currentTime;
+            frequencies.forEach((freq, i) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, time + (i * duration));
+                
+                gainNode.gain.setValueAtTime(0.3, time + (i * duration));
+                gainNode.gain.exponentialRampToValueAtTime(0.01, time + ((i + 1) * duration));
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start(time + (i * duration));
+                oscillator.stop(time + ((i + 1) * duration));
+            });
+        }
+
+        // Create game sounds
+        const moveSound = {
+            play: () => createBeepSound(880, 0.1).play()
+        };
+
+        const collisionSound = {
+            play: () => createBeepSound(220, 0.3, 'sawtooth').play()
+        };
+
+        const scoreSound = {
+            play: () => createArpeggio([440, 550, 660, 880], 0.1, true)
+        };
+
+        const gameOverSound = {
+            play: () => createArpeggio([880, 660, 550, 440], 0.2, false)
+        };
+
+        const celebrationSound = {
+            play: () => createArpeggio([440, 550, 660, 880, 1100], 0.15, true)
+        };
 
         // High scores management
         let playerNickname = '';
@@ -208,19 +268,41 @@
             move(direction) {
                 if (this.isAnimatingDeath) return;
                 const STEP = 40;
+                let moved = false;
+                
                 switch(direction) {
                     case 'up':
-                        if (this.y - STEP >= 0) this.y -= STEP;
+                        if (this.y - STEP >= 0) {
+                            this.y -= STEP;
+                            moved = true;
+                        }
                         break;
                     case 'down':
-                        if (this.y + STEP + this.height <= this.canvas.height) this.y += STEP;
+                        if (this.y + STEP + this.height <= this.canvas.height) {
+                            this.y += STEP;
+                            moved = true;
+                        }
                         break;
                     case 'left':
-                        if (this.x - STEP >= 0) this.x -= STEP;
+                        if (this.x - STEP >= 0) {
+                            this.x -= STEP;
+                            moved = true;
+                        }
                         break;
                     case 'right':
-                        if (this.x + STEP + this.width <= this.canvas.width) this.x += STEP;
+                        if (this.x + STEP + this.width <= this.canvas.width) {
+                            this.x += STEP;
+                            moved = true;
+                        }
                         break;
+                }
+                
+                if (moved) {
+                    try {
+                        moveSound.play();
+                    } catch (e) {
+                        console.log('Move sound error:', e);
+                    }
                 }
             }
 
@@ -231,10 +313,9 @@
                 document.getElementById('lives').textContent = this.lives;
                 
                 try {
-                    collisionSound.currentTime = 0;
-                    collisionSound.play().catch(e => console.log('Audio play failed:', e));
+                    collisionSound.play();
                 } catch (e) {
-                    console.log('Audio error:', e);
+                    console.log('Collision sound error:', e);
                 }
                 
                 this.isAnimatingDeath = true;
@@ -381,10 +462,9 @@
                         document.getElementById('score').textContent = this.score;
                         
                         try {
-                            scoreSound.currentTime = 0;
-                            scoreSound.play().catch(e => console.log('Audio play failed:', e));
+                            celebrationSound.play();
                         } catch (e) {
-                            console.log('Audio error:', e);
+                            console.log('Celebration sound error:', e);
                         }
 
                         setTimeout(() => {
@@ -400,9 +480,14 @@
                 
                 for (let obstacle of this.obstacles) {
                     if (obstacle.collidesWith(this.player)) {
-                        if (this.player.loseLife()) {
-                            this.gameOver = true;
-                        }
+                if (this.player.loseLife()) {
+                    this.gameOver = true;
+                    try {
+                        gameOverSound.play();
+                    } catch (e) {
+                        console.log('Game over sound error:', e);
+                    }
+                }
                         break;
                     }
                 }
