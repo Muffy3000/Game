@@ -135,7 +135,7 @@
                         this.deathAnimationFrame = 0;
                     }
                 } else {
-                    this.ctx.fillStyle = '#0F0';
+                    this.ctx.fillStyle = '#FF69B4'; // Pink color for the player
                     this.ctx.fillRect(this.x, this.y, this.width, this.height);
                 }
             }
@@ -197,10 +197,10 @@
 
             initObstacles() {
                 const lanes = [
-                    { y: 100, speed: 2, width: 60, direction: 1, color: '#FF0000' },    // Red
-                    { y: 200, speed: 3, width: 80, direction: -1, color: '#FFA500' },   // Orange
-                    { y: 300, speed: 4, width: 50, direction: 1, color: '#FFFF00' },    // Yellow
-                    { y: 400, speed: 2.5, width: 70, direction: -1, color: '#00FF00' }  // Green
+                    { y: 100, speed: 2, width: 60, direction: 1, color: '#FF69B4' },    // Pink
+                    { y: 200, speed: 3, width: 80, direction: -1, color: '#4169E1' },   // Blue
+                    { y: 300, speed: 4, width: 50, direction: 1, color: '#800080' },    // Purple
+                    { y: 400, speed: 2.5, width: 70, direction: -1, color: '#FFFF00' }  // Yellow
                 ];
 
                 lanes.forEach(lane => {
@@ -282,9 +282,28 @@
             draw() {
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 
-                // Draw safe zones
-                this.ctx.fillStyle = '#0A0';
+                // Draw rainbow safe zones
+                const topGradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
+                topGradient.addColorStop(0, '#FF0000');   // Red
+                topGradient.addColorStop(0.17, '#FF7F00'); // Orange
+                topGradient.addColorStop(0.33, '#FFFF00'); // Yellow
+                topGradient.addColorStop(0.5, '#00FF00');  // Green
+                topGradient.addColorStop(0.67, '#0000FF'); // Blue
+                topGradient.addColorStop(0.83, '#4B0082'); // Indigo
+                topGradient.addColorStop(1, '#8F00FF');    // Violet
+                
+                const bottomGradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
+                bottomGradient.addColorStop(0, '#FF0000');   // Red
+                bottomGradient.addColorStop(0.17, '#FF7F00'); // Orange
+                bottomGradient.addColorStop(0.33, '#FFFF00'); // Yellow
+                bottomGradient.addColorStop(0.5, '#00FF00');  // Green
+                bottomGradient.addColorStop(0.67, '#0000FF'); // Blue
+                bottomGradient.addColorStop(0.83, '#4B0082'); // Indigo
+                bottomGradient.addColorStop(1, '#8F00FF');    // Violet
+
+                this.ctx.fillStyle = topGradient;
                 this.ctx.fillRect(0, 0, this.canvas.width, 50);
+                this.ctx.fillStyle = bottomGradient;
                 this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
 
                 this.obstacles.forEach(obstacle => obstacle.draw());
