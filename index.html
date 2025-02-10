@@ -4,7 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Frogger Game</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+        .game-container {
+            position: relative;
+        }
+
+        .game-info {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-size: 20px;
+            padding: 0 10px;
+        }
+
+        #gameCanvas {
+            background-color: #000;
+            border: 2px solid #666;
+        }
+    </style>
 </head>
 <body>
     <div class="game-container">
@@ -14,8 +45,240 @@
         </div>
         <canvas id="gameCanvas"></canvas>
     </div>
-    <script src="player.js"></script>
-    <script src="obstacle.js"></script>
-    <script src="game.js"></script>
+
+    <script>
+        // Player class
+        class Player {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.width = 30;
+                this.height = 30;
+                this.reset();
+            }
+
+            reset() {
+                // Start at bottom center
+                this.x = (this.canvas.width - this.width) / 2;
+                this.y = this.canvas.height - this.height - 10;
+                this.lives = 3;
+            }
+
+            move(direction) {
+                const STEP = 40; // Grid-based movement
+
+                switch(direction) {
+                    case 'up':
+                        if (this.y - STEP >= 0) this.y -= STEP;
+                        break;
+                    case 'down':
+                        if (this.y + STEP + this.height <= this.canvas.height) this.y += STEP;
+                        break;
+                    case 'left':
+                        if (this.x - STEP >= 0) this.x -= STEP;
+                        break;
+                    case 'right':
+                        if (this.x + STEP + this.width <= this.canvas.width) this.x += STEP;
+                        break;
+                }
+            }
+
+            loseLife() {
+                this.lives--;
+                document.getElementById('lives').textContent = this.lives;
+                if (this.lives > 0) {
+                    this.x = (this.canvas.width - this.width) / 2;
+                    this.y = this.canvas.height - this.height - 10;
+                }
+                return this.lives <= 0;
+            }
+
+            draw() {
+                this.ctx.fillStyle = '#0F0';
+                this.ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        // Obstacle class
+        class Obstacle {
+            constructor(canvas, y, speed, width, direction) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.width = width;
+                this.height = 30;
+                this.y = y;
+                this.speed = speed;
+                this.direction = direction; // 1 for right, -1 for left
+
+                // Start position based on direction
+                this.x = direction === 1 ? -this.width : canvas.width;
+            }
+
+            update() {
+                this.x += this.speed * this.direction;
+                
+                // Reset position when off screen
+                if (this.direction === 1 && this.x > this.canvas.width) {
+                    this.x = -this.width;
+                } else if (this.direction === -1 && this.x + this.width < 0) {
+                    this.x = this.canvas.width;
+                }
+            }
+
+            draw() {
+                this.ctx.fillStyle = '#F00';
+                this.ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+
+            collidesWith(player) {
+                return (
+                    this.x < player.x + player.width &&
+                    this.x + this.width > player.x &&
+                    this.y < player.y + player.height &&
+                    this.y + this.height > player.y
+                );
+            }
+        }
+
+        // Game class
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Set canvas size
+                this.canvas.width = 600;
+                this.canvas.height = 600;
+                
+                this.player = new Player(this.canvas);
+                this.obstacles = [];
+                this.score = 0;
+                this.gameOver = false;
+                
+                this.initObstacles();
+                this.setupControls();
+                this.gameLoop();
+            }
+
+            initObstacles() {
+                // Create multiple lanes of obstacles
+                const lanes = [
+                    { y: 100, speed: 2, width: 60, direction: 1 },
+                    { y: 200, speed: 3, width: 80, direction: -1 },
+                    { y: 300, speed: 4, width: 50, direction: 1 },
+                    { y: 400, speed: 2.5, width: 70, direction: -1 }
+                ];
+
+                lanes.forEach(lane => {
+                    // Add multiple obstacles per lane
+                    for (let i = 0; i < 3; i++) {
+                        this.obstacles.push(
+                            new Obstacle(
+                                this.canvas,
+                                lane.y,
+                                lane.speed,
+                                lane.width,
+                                lane.direction
+                            )
+                        );
+                    }
+                });
+            }
+
+            setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (this.gameOver) {
+                        if (e.key === 'Enter') {
+                            this.resetGame();
+                        }
+                        return;
+                    }
+
+                    switch(e.key) {
+                        case 'ArrowUp':
+                            this.player.move('up');
+                            break;
+                        case 'ArrowDown':
+                            this.player.move('down');
+                            break;
+                        case 'ArrowLeft':
+                            this.player.move('left');
+                            break;
+                        case 'ArrowRight':
+                            this.player.move('right');
+                            break;
+                    }
+
+                    // Check if player reached the top
+                    if (this.player.y <= 50) {
+                        this.score++;
+                        document.getElementById('score').textContent = this.score;
+                        this.player.y = this.canvas.height - this.player.height - 10;
+                    }
+                });
+            }
+
+            checkCollisions() {
+                for (let obstacle of this.obstacles) {
+                    if (obstacle.collidesWith(this.player)) {
+                        if (this.player.loseLife()) {
+                            this.gameOver = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            resetGame() {
+                this.player.reset();
+                this.score = 0;
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('lives').textContent = this.player.lives;
+                this.gameOver = false;
+            }
+
+            update() {
+                if (!this.gameOver) {
+                    this.obstacles.forEach(obstacle => obstacle.update());
+                    this.checkCollisions();
+                }
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw safe zones
+                this.ctx.fillStyle = '#0A0';
+                this.ctx.fillRect(0, 0, this.canvas.width, 50);
+                this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
+
+                this.obstacles.forEach(obstacle => obstacle.draw());
+                this.player.draw();
+
+                if (this.gameOver) {
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = '48px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('Game Over!', this.canvas.width / 2, this.canvas.height / 2);
+                    this.ctx.font = '24px Arial';
+                    this.ctx.fillText('Press Enter to restart', this.canvas.width / 2, this.canvas.height / 2 + 40);
+                }
+            }
+
+            gameLoop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+
+        // Start the game when the page loads
+        window.onload = () => {
+            new Game();
+        };
+    </script>
 </body>
 </html>
