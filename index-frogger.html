@@ -15,6 +15,50 @@
             font-family: Arial, sans-serif;
         }
 
+        #nicknameModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #nicknameContent {
+            background: #444;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+        }
+
+        #nicknameInput {
+            padding: 10px;
+            font-size: 18px;
+            margin: 10px 0;
+            width: 200px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        #startButton {
+            padding: 10px 20px;
+            font-size: 18px;
+            background: #FF69B4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #startButton:hover {
+            background: #ff4da6;
+        }
+
         .game-container {
             display: flex;
             gap: 20px;
@@ -33,6 +77,40 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
         }
 
+        .high-scores {
+            width: 200px;
+            color: white;
+            font-size: 16px;
+            padding: 20px;
+            background: #4169E1;
+            border-radius: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .all-time-high {
+            width: 200px;
+            color: white;
+            font-size: 20px;
+            padding: 20px;
+            background: #00AA00;
+            border-radius: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+        }
+
+        .scores-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+
+        .scores-list li {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
         .game-info div {
             margin: 10px 0;
             text-align: center;
@@ -45,18 +123,68 @@
     </style>
 </head>
 <body>
+    <div id="nicknameModal">
+        <div id="nicknameContent">
+            <h2>Enter Your Nickname</h2>
+            <input type="text" id="nicknameInput" maxlength="10" placeholder="Your nickname">
+            <br>
+            <button id="startButton">Start Game</button>
+        </div>
+    </div>
+
     <div class="game-container">
         <canvas id="gameCanvas"></canvas>
-        <div class="game-info">
-            <div>Score:<br><span id="score">0</span></div>
-            <div>Lives:<br><span id="lives">3</span></div>
+        <div>
+            <div class="game-info">
+                <div>Score:<br><span id="score">0</span></div>
+                <div>Lives:<br><span id="lives">3</span></div>
+            </div>
+            <div class="high-scores">
+                <h3>High Scores</h3>
+                <ul class="scores-list" id="highScoresList"></ul>
+                <h3>Best Times</h3>
+                <ul class="scores-list" id="bestTimesList"></ul>
+            </div>
+            <div class="all-time-high">
+                <h3>All-Time Best</h3>
+                <div id="allTimeHigh">No record yet</div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Create collision sound (shorter, more reliable format)
+        // Create sounds
         const collisionSound = new Audio('data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPz8/Pz8/TU1NTU1NW1tbW1tbaGhoaGhoaHd3d3d3d4aGhoaGhpSUlJSUlKMjIyMjIyMwMDAwMDA/Pz8/Pz9NTU1NTU1bW1tbW1toaGhoaGh3d3d3d3eGhoaGhoaUlJSUlJSjAAAAAAAA//tQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQUg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tQxCmD1AACpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQ8g9AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
         collisionSound.volume = 0.3;
+
+        const scoreSound = new Audio('data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAAEsAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx3d3d3d4mJiYmJlZWVlZWhoaGhoaGhoaGhtbW1tbXBwcHBwc3Nzc3N2tra2tre3t7e3urq6urq/Pz8/Pz8//tQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQUg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tQxCmD1AACpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQ8g9AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
+        scoreSound.volume = 0.3;
+
+        // High scores management
+        let playerNickname = '';
+        let highScores = JSON.parse(localStorage.getItem('froggerHighScores')) || [];
+        let bestTimes = JSON.parse(localStorage.getItem('froggerBestTimes')) || [];
+        let allTimeHigh = JSON.parse(localStorage.getItem('froggerAllTimeHigh')) || { score: 0, player: '' };
+
+        function updateHighScores() {
+            const highScoresList = document.getElementById('highScoresList');
+            const bestTimesList = document.getElementById('bestTimesList');
+            const allTimeHighDiv = document.getElementById('allTimeHigh');
+
+            highScoresList.innerHTML = highScores
+                .slice(0, 5)
+                .map(score => `<li>${score.player} - ${score.score}</li>`)
+                .join('');
+
+            bestTimesList.innerHTML = bestTimes
+                .slice(0, 5)
+                .map(time => `<li>${time.player} - ${time.time}s</li>`)
+                .join('');
+
+            allTimeHighDiv.textContent = allTimeHigh.score > 0 
+                ? `${allTimeHigh.player} - ${allTimeHigh.score}`
+                : 'No record yet';
+        }
 
         // Player class
         class Player {
@@ -190,6 +318,8 @@
                 this.obstacles = [];
                 this.score = 0;
                 this.gameOver = false;
+                this.successTimer = 0;
+                this.gameStartTime = Date.now();
                 this.initObstacles();
                 this.setupControls();
                 this.gameLoop();
@@ -228,6 +358,8 @@
                         return;
                     }
 
+                    if (this.successTimer > 0) return; // Prevent movement during success animation
+
                     switch(e.key) {
                         case 'ArrowUp':
                             this.player.move('up');
@@ -243,10 +375,22 @@
                             break;
                     }
 
-                    if (this.player.y <= 50) {
+                    if (this.player.y <= 50 && this.successTimer === 0) {
+                        this.successTimer = 3000; // 3 seconds in milliseconds
                         this.score++;
                         document.getElementById('score').textContent = this.score;
-                        this.player.y = this.canvas.height - this.player.height - 10;
+                        
+                        try {
+                            scoreSound.currentTime = 0;
+                            scoreSound.play().catch(e => console.log('Audio play failed:', e));
+                        } catch (e) {
+                            console.log('Audio error:', e);
+                        }
+
+                        setTimeout(() => {
+                            this.successTimer = 0;
+                            this.player.y = this.canvas.height - this.player.height - 10;
+                        }, 3000);
                     }
                 });
             }
@@ -270,6 +414,34 @@
                 document.getElementById('score').textContent = this.score;
                 document.getElementById('lives').textContent = this.player.lives;
                 this.gameOver = false;
+                this.successTimer = 0;
+                this.gameStartTime = Date.now();
+            }
+
+            updateScores() {
+                const gameTime = (Date.now() - this.gameStartTime) / 1000;
+                
+                // Update high scores
+                highScores.push({ player: playerNickname, score: this.score });
+                highScores.sort((a, b) => b.score - a.score);
+                highScores = highScores.slice(0, 5);
+                localStorage.setItem('froggerHighScores', JSON.stringify(highScores));
+
+                // Update best times
+                if (this.score > 0) {
+                    bestTimes.push({ player: playerNickname, time: gameTime.toFixed(1) });
+                    bestTimes.sort((a, b) => parseFloat(a.time) - parseFloat(b.time));
+                    bestTimes = bestTimes.slice(0, 5);
+                    localStorage.setItem('froggerBestTimes', JSON.stringify(bestTimes));
+                }
+
+                // Update all-time high score
+                if (this.score > allTimeHigh.score) {
+                    allTimeHigh = { player: playerNickname, score: this.score };
+                    localStorage.setItem('froggerAllTimeHigh', JSON.stringify(allTimeHigh));
+                }
+
+                updateHighScores();
             }
 
             update() {
@@ -282,15 +454,23 @@
             draw() {
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 
-                // Draw rainbow safe zones
+                // Draw rainbow safe zones with celebration effect during success
                 const topGradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
-                topGradient.addColorStop(0, '#FF0000');   // Red
-                topGradient.addColorStop(0.17, '#FF7F00'); // Orange
-                topGradient.addColorStop(0.33, '#FFFF00'); // Yellow
-                topGradient.addColorStop(0.5, '#00FF00');  // Green
-                topGradient.addColorStop(0.67, '#0000FF'); // Blue
-                topGradient.addColorStop(0.83, '#4B0082'); // Indigo
-                topGradient.addColorStop(1, '#8F00FF');    // Violet
+                if (this.successTimer > 0) {
+                    // Flashing rainbow colors during success
+                    const time = Date.now() % 1000 / 1000;
+                    topGradient.addColorStop((time + 0) % 1, '#FF0000');
+                    topGradient.addColorStop((time + 0.33) % 1, '#00FF00');
+                    topGradient.addColorStop((time + 0.66) % 1, '#0000FF');
+                } else {
+                    topGradient.addColorStop(0, '#FF0000');   // Red
+                    topGradient.addColorStop(0.17, '#FF7F00'); // Orange
+                    topGradient.addColorStop(0.33, '#FFFF00'); // Yellow
+                    topGradient.addColorStop(0.5, '#00FF00');  // Green
+                    topGradient.addColorStop(0.67, '#0000FF'); // Blue
+                    topGradient.addColorStop(0.83, '#4B0082'); // Indigo
+                    topGradient.addColorStop(1, '#8F00FF');    // Violet
+                }
                 
                 const bottomGradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
                 bottomGradient.addColorStop(0, '#FF0000');   // Red
@@ -310,6 +490,7 @@
                 this.player.draw();
 
                 if (this.gameOver) {
+                    this.updateScores();
                     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                     
@@ -318,7 +499,18 @@
                     this.ctx.textAlign = 'center';
                     this.ctx.fillText('Game Over!', this.canvas.width / 2, this.canvas.height / 2);
                     this.ctx.font = '24px Arial';
-                    this.ctx.fillText('Press Enter to restart', this.canvas.width / 2, this.canvas.height / 2 + 40);
+                    this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+                    this.ctx.fillText('Press Enter to restart', this.canvas.width / 2, this.canvas.height / 2 + 80);
+                }
+
+                // Draw success celebration
+                if (this.successTimer > 0) {
+                    const timeLeft = Math.ceil(this.successTimer / 1000);
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = '36px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(`Success! ${timeLeft}`, this.canvas.width / 2, this.canvas.height / 2);
+                    this.successTimer = Math.max(0, this.successTimer - 16.67); // Decrease timer (60 FPS)
                 }
             }
 
@@ -330,7 +522,27 @@
         }
 
         window.onload = () => {
-            new Game();
+            const modal = document.getElementById('nicknameModal');
+            const input = document.getElementById('nicknameInput');
+            const startButton = document.getElementById('startButton');
+            let game = null;
+
+            function startGame() {
+                if (input.value.trim()) {
+                    playerNickname = input.value.trim();
+                    modal.style.display = 'none';
+                    game = new Game();
+                    updateHighScores();
+                }
+            }
+
+            startButton.addEventListener('click', startGame);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') startGame();
+            });
+
+            // Focus the input field
+            input.focus();
         };
     </script>
 </body>
