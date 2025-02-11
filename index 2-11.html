@@ -565,7 +565,6 @@
             function startLandingTimer() {
                 const timerElement = document.getElementById('landingTimer');
                 let timeLeft = 3;
-                canMove = false;
                 timerElement.style.opacity = '1';
                 
                 landingTimer = setInterval(() => {
@@ -576,14 +575,12 @@
                         clearInterval(landingTimer);
                         landingTimer = null;
                         timerElement.style.opacity = '0';
-                        canMove = true;
-                player.y = canvas.height - player.height; // Reset at bottom
                     }
                 }, 1000);
             }
 
             function movePlayer(direction) {
-                if (gameOver || !canMove) return;
+                if (gameOver) return;
 
                 let moved = false;
                 const moveAmount = player.speed;
@@ -712,7 +709,6 @@
                         } else {
                             setTimeout(() => {
                                 player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height; // Reset at bottom
                                 player.isColliding = false;
                             }, 1000);
                         }
@@ -802,7 +798,7 @@
                 currentLevel = 1;
                 player.lives = 3;
                 player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height; // Reset at bottom
+                player.y = canvas.height - player.height / 2; // Start position
                 gameOver = false;
                 particles = [];
                 player.isColliding = false;
