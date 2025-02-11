@@ -292,23 +292,70 @@
             let bestTimes = JSON.parse(localStorage.getItem('froggerBestTimes')) || [];
             let allTimeHigh = JSON.parse(localStorage.getItem('froggerAllTimeHigh')) || { score: 0, player: 'None' };
 
-            // Sound effect for collision
-            const collisionSound = new Audio('heavy-cineamtic-hit-166888.mp3');
-            collisionSound.volume = 0.5;
-
-            // Sound effect function
-            async function playCollisionSound() {
-                try {
-                    collisionSound.currentTime = 0;
-                    await collisionSound.play();
-                } catch (e) {
-                    console.log('Audio play failed:', e);
+            // Create audio context for sound effects
+            let audioContext;
+            
+            // Function to initialize audio context
+            async function initAudioContext() {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
                 }
             }
 
-            // Empty functions for other sounds
-            function playJumpSound() {}
-            function playScoreSound() {}
+            // Initialize audio context on user interaction
+            let audioInitialized = false;
+            async function initAudioOnInteraction() {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                if (!audioInitialized) {
+                    audioInitialized = true;
+                }
+            }
+
+            // Add interaction listeners for audio context
+            document.addEventListener('click', initAudioOnInteraction);
+            document.addEventListener('keydown', initAudioOnInteraction);
+
+            // Function to create beep sound
+            async function playBeep(frequency, duration, type = 'sine') {
+                await initAudioOnInteraction();
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = type;
+                oscillator.frequency.value = frequency;
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + duration);
+            }
+
+            // Sound effect functions
+            function playJumpSound() {
+                playBeep(600, 0.1, 'square');
+            }
+
+            function playCollisionSound() {
+                playBeep(200, 0.3, 'sawtooth');
+            }
+
+            function playScoreSound() {
+                playBeep(800, 0.1);
+                setTimeout(() => playBeep(1000, 0.1), 100);
+            }
 
             // Obstacles setup
             const BASE_SPEED = 1.0;
@@ -332,7 +379,7 @@
             // Player setup with dynamic sizing
             const player = {
                 x: canvas.width / 2 - baseSize / 2,
-                y: canvas.height - baseSize / 2 - 35, // Start deeper within bottom rainbow
+                y: canvas.height - baseSize / 2 - 10,
                 width: baseSize,
                 height: baseSize,
                 speed: 25,
@@ -351,7 +398,7 @@
                 player.width = playerSize.width;
                 player.height = playerSize.height;
                 player.x = canvas.width / 2 - playerSize.width / 2;
-                player.y = canvas.height - playerSize.height - 35; // Start deeper within bottom rainbow
+                player.y = canvas.height - playerSize.height - 10;
             };
             sushiImage.src = 'Untitled design (3).png';
             
@@ -577,7 +624,7 @@
                         landingTimer = null;
                         timerElement.style.opacity = '0';
                         canMove = true;
-                        player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
+                        player.y = canvas.height - player.height - 10;
                     }
                 }, 1000);
             }
@@ -588,8 +635,10 @@
                 let moved = false;
                 switch(direction) {
                     case 'up':
-                        player.y -= player.speed;
-                        moved = true;
+                        if (player.y - player.speed >= 0) {
+                            player.y -= player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'down':
                         if (player.y + player.speed + player.height <= canvas.height) {
@@ -615,10 +664,9 @@
                     playJumpSound();
                 }
 
-                // Check if player is fully inside the top rainbow zone
-                const playerTopY = player.y;
-                const playerBottomY = player.y + player.height;
-                if (playerTopY >= 0 && playerBottomY <= 50 && !landingTimer) { // Must be fully inside rainbow
+                // Check if player's center reached the landing zone
+                const playerCenterY = player.y + player.height / 2;
+                if (playerCenterY <= 25 && !landingTimer) {
                     score++;
                     updateLevel();
                     document.getElementById('score').textContent = score;
@@ -714,7 +762,7 @@
                         } else {
                             setTimeout(() => {
                                 player.x = canvas.width / 2 - player.width / 2;
-                                player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
+                                player.y = canvas.height - player.height - 10;
                                 player.isColliding = false;
                             }, 1000);
                         }
@@ -804,7 +852,7 @@
                 currentLevel = 1;
                 player.lives = 3;
                 player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
+                player.y = canvas.height - player.height - 10;
                 gameOver = false;
                 particles = [];
                 player.isColliding = false;
@@ -860,6 +908,9 @@
                 playerName = input.value.trim() || 'Player';
                 nameModal.style.display = 'none';
                 resetGame();
+                
+                // Initialize audio context
+                await initAudioOnInteraction();
                 
                 // Always start a new game loop
                 gameLoopStarted = true;
