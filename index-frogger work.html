@@ -326,16 +326,16 @@
             // Calculate base size from obstacles and canvas
             const baseSize = Math.max(
                 Math.max(...lanes.map(lane => lane.width)), // Largest obstacle width
-                canvas.width * 0.50 // 50% of canvas width for a larger, more visible sushi
+                canvas.width * 0.03 // 3% of canvas width for a more manageable sushi size
             );
 
             // Player setup with dynamic sizing
             const player = {
                 x: canvas.width / 2 - baseSize / 2,
-                y: canvas.height - baseSize / 2 - 35, // Start deeper within bottom rainbow
+                y: canvas.height - baseSize / 2 - 15, // Start closer to bottom rainbow
                 width: baseSize,
                 height: baseSize,
-                speed: 30,
+                speed: 400,
                 lives: 3,
                 isColliding: false,
                 collisionTime: 0
@@ -351,7 +351,7 @@
                 player.width = playerSize.width;
                 player.height = playerSize.height;
                 player.x = canvas.width / 2 - playerSize.width / 2;
-                player.y = canvas.height - playerSize.height - 35; // Start deeper within bottom rainbow
+                player.y = canvas.height - playerSize.height - 15; // Start closer to bottom rainbow
             };
             sushiImage.src = 'Untitled design (3).png';
             
@@ -577,7 +577,7 @@
                         landingTimer = null;
                         timerElement.style.opacity = '0';
                         canMove = true;
-                        player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
+                        player.y = canvas.height - player.height - 15; // Reset closer to bottom rainbow
                     }
                 }, 1000);
             }
@@ -588,9 +588,10 @@
                 let moved = false;
                 switch(direction) {
                     case 'up':
-                        // Move up with more control
-                        player.y -= player.speed;
-                        moved = true;
+                        if (player.y - player.speed >= 0) {
+                            player.y -= player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'down':
                         if (player.y + player.speed + player.height <= canvas.height) {
@@ -621,8 +622,8 @@
                 const playerTopY = player.y;
                 const playerBottomY = player.y + player.height;
                 
-                // Score if player is mostly in the rainbow zone
-                if (playerTopY <= rainbowZoneHeight && playerBottomY <= rainbowZoneHeight + 20 && !landingTimer) {
+                // Score if any part of the player enters the top rainbow zone
+                if ((playerTopY <= rainbowZoneHeight || playerBottomY <= rainbowZoneHeight) && !landingTimer) {
                     score++;
                     updateLevel();
                     document.getElementById('score').textContent = score;
@@ -718,7 +719,7 @@
                         } else {
                             setTimeout(() => {
                                 player.x = canvas.width / 2 - player.width / 2;
-                                player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
+                player.y = canvas.height - player.height - 15; // Reset closer to bottom rainbow
                                 player.isColliding = false;
                             }, 1000);
                         }
@@ -808,7 +809,7 @@
                 currentLevel = 1;
                 player.lives = 3;
                 player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
+                player.y = canvas.height - player.height - 15; // Reset closer to bottom rainbow
                 gameOver = false;
                 particles = [];
                 player.isColliding = false;
