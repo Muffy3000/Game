@@ -332,7 +332,7 @@
             // Player setup with dynamic sizing
             const player = {
                 x: canvas.width / 2 - baseSize / 2,
-                y: canvas.height - baseSize, // Start at bottom, no margin
+                y: canvas.height - baseSize, // Start at bottom
                 width: baseSize,
                 height: baseSize,
                 speed: 15, // Further reduced speed for even smoother movement
@@ -351,7 +351,7 @@
                 player.width = playerSize.width;
                 player.height = playerSize.height;
                 player.x = canvas.width / 2 - playerSize.width / 2;
-                player.y = canvas.height - playerSize.height; // Start at bottom, no margin
+                player.y = canvas.height - playerSize.height; // Start at bottom
             };
             sushiImage.src = 'Untitled design (3).png';
             
@@ -577,7 +577,7 @@
                         landingTimer = null;
                         timerElement.style.opacity = '0';
                         canMove = true;
-                player.y = canvas.height - player.height; // Reset at bottom, no margin
+                player.y = canvas.height - player.height; // Reset at bottom
                     }
                 }, 1000);
             }
@@ -590,30 +590,20 @@
                 
                 switch(direction) {
                     case 'up':
-                        if (player.y - moveAmount >= 0) {
-                            player.y = Math.max(0, player.y - moveAmount);
-                            moved = true;
-                        }
+                        player.y = Math.max(0, player.y - moveAmount);
+                        moved = true;
                         break;
                     case 'down':
-                        const maxY = canvas.height - player.height;
-                        if (player.y + moveAmount <= maxY) {
-                            player.y = Math.min(maxY, player.y + moveAmount);
-                            moved = true;
-                        }
+                        player.y = Math.min(canvas.height - player.height, player.y + moveAmount);
+                        moved = true;
                         break;
                     case 'left':
-                        if (player.x - moveAmount >= 0) {
-                            player.x = Math.max(0, player.x - moveAmount);
-                            moved = true;
-                        }
+                        player.x = Math.max(0, player.x - moveAmount);
+                        moved = true;
                         break;
                     case 'right':
-                        const maxX = canvas.width - player.width;
-                        if (player.x + moveAmount <= maxX) {
-                            player.x = Math.min(maxX, player.x + moveAmount);
-                            moved = true;
-                        }
+                        player.x = Math.min(canvas.width - player.width, player.x + moveAmount);
+                        moved = true;
                         break;
                 }
 
