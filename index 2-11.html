@@ -326,16 +326,16 @@
             // Calculate base size from obstacles and canvas
             const baseSize = Math.max(
                 Math.max(...lanes.map(lane => lane.width)), // Largest obstacle width
-                canvas.width * 0.48 // 48% of canvas width (20% increase from previous size)
+                canvas.width * 0.48 // 48% of canvas width for a larger, more visible sushi
             );
 
             // Player setup with dynamic sizing
             const player = {
                 x: canvas.width / 2 - baseSize / 2,
-                y: canvas.height - baseSize, // Start at bottom
+                y: canvas.height - baseSize / 2 - 15, // Start closer to bottom rainbow
                 width: baseSize,
                 height: baseSize,
-                speed: 15, // Further reduced speed for even smoother movement
+                speed: 15,
                 lives: 3,
                 isColliding: false,
                 collisionTime: 0
@@ -351,7 +351,7 @@
                 player.width = playerSize.width;
                 player.height = playerSize.height;
                 player.x = canvas.width / 2 - playerSize.width / 2;
-                player.y = canvas.height - playerSize.height; // Start at bottom
+                player.y = canvas.height - playerSize.height - 15; // Start closer to bottom rainbow
             };
             sushiImage.src = 'Untitled design (3).png';
             
@@ -549,7 +549,7 @@
             }
 
             function checkCollision(rect1, rect2) {
-                // Use a smaller hitbox (15% of visual size) for more precise collision detection with larger player
+                // Use a smaller hitbox (15% of visual size) for more accurate collisions
                 const hitboxScale = 0.15;
                 const hitboxWidth = rect1.width * hitboxScale;
                 const hitboxHeight = rect1.height * hitboxScale;
@@ -565,6 +565,7 @@
             function startLandingTimer() {
                 const timerElement = document.getElementById('landingTimer');
                 let timeLeft = 3;
+                canMove = false;
                 timerElement.style.opacity = '1';
                 
                 landingTimer = setInterval(() => {
@@ -575,32 +576,40 @@
                         clearInterval(landingTimer);
                         landingTimer = null;
                         timerElement.style.opacity = '0';
+                        canMove = true;
+                        player.y = canvas.height - player.height - 15; // Reset closer to bottom rainbow
                     }
                 }, 1000);
             }
 
             function movePlayer(direction) {
-                if (gameOver) return;
+                if (gameOver || !canMove) return;
 
                 let moved = false;
-                const moveAmount = player.speed;
-                
                 switch(direction) {
                     case 'up':
-                        player.y = player.y - moveAmount;
-                        moved = true;
+                        if (player.y - player.speed >= 0) {
+                            player.y -= player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'down':
-                        player.y = player.y + moveAmount;
-                        moved = true;
+                        if (player.y + player.speed + player.height <= canvas.height) {
+                            player.y += player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'left':
-                        player.x = player.x - moveAmount;
-                        moved = true;
+                        if (player.x - player.speed >= 0) {
+                            player.x -= player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'right':
-                        player.x = player.x + moveAmount;
-                        moved = true;
+                        if (player.x + player.speed + player.width <= canvas.width) {
+                            player.x += player.speed;
+                            moved = true;
+                        }
                         break;
                 }
 
@@ -611,9 +620,10 @@
                 // Check if player has reached the top rainbow zone
                 const rainbowZoneHeight = 50;
                 const playerTopY = player.y;
+                const playerBottomY = player.y + player.height;
                 
                 // Score if any part of the player enters the top rainbow zone
-                if (playerTopY <= rainbowZoneHeight && !landingTimer) {
+                if ((playerTopY <= rainbowZoneHeight || playerBottomY <= rainbowZoneHeight) && !landingTimer) {
                     score++;
                     updateLevel();
                     document.getElementById('score').textContent = score;
@@ -709,6 +719,7 @@
                         } else {
                             setTimeout(() => {
                                 player.x = canvas.width / 2 - player.width / 2;
+                                player.y = canvas.height - player.height - 15; // Reset closer to bottom rainbow
                                 player.isColliding = false;
                             }, 1000);
                         }
@@ -798,7 +809,7 @@
                 currentLevel = 1;
                 player.lives = 3;
                 player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height / 2; // Start position
+                player.y = canvas.height - player.height - 15; // Reset closer to bottom rainbow
                 gameOver = false;
                 particles = [];
                 player.isColliding = false;
