@@ -292,11 +292,17 @@
             let bestTimes = JSON.parse(localStorage.getItem('froggerBestTimes')) || [];
             let allTimeHigh = JSON.parse(localStorage.getItem('froggerAllTimeHigh')) || { score: 0, player: 'None' };
 
-            // Sound effect for collision
-            const collisionSound = new Audio('heavy-cineamtic-hit-166888.mp3');
-            collisionSound.volume = 0.5;
+            // Sound effects setup
+            const collisionSound = new Audio('757898__audiopapkin__sound-design-elements-impact-sfx-ps-022.wav');
+            const jumpSound = new Audio('714257__qubodup__puff-of-smoke.wav');
+            const scoreSound = new Audio('cha-ching-7053.mp3');
 
-            // Sound effect function
+            // Set initial volumes
+            collisionSound.volume = 0.5;
+            jumpSound.volume = 0.3;
+            scoreSound.volume = 0.4;
+
+            // Sound effect functions
             async function playCollisionSound() {
                 try {
                     collisionSound.currentTime = 0;
@@ -306,9 +312,23 @@
                 }
             }
 
-            // Empty functions for other sounds
-            function playJumpSound() {}
-            function playScoreSound() {}
+            async function playJumpSound() {
+                try {
+                    jumpSound.currentTime = 0;
+                    await jumpSound.play();
+                } catch (e) {
+                    console.log('Audio play failed:', e);
+                }
+            }
+
+            async function playScoreSound() {
+                try {
+                    scoreSound.currentTime = 0;
+                    await scoreSound.play();
+                } catch (e) {
+                    console.log('Audio play failed:', e);
+                }
+            }
 
             // Obstacles setup
             const BASE_SPEED = 1.0;
@@ -549,8 +569,8 @@
             }
 
             function checkCollision(rect1, rect2) {
-                // Use a smaller hitbox (15% of visual size) for more precise collision detection with larger player
-                const hitboxScale = 0.15;
+                // Use a smaller hitbox (10% of visual size) for more precise collision detection with larger player
+                const hitboxScale = 0.10;
                 const hitboxWidth = rect1.width * hitboxScale;
                 const hitboxHeight = rect1.height * hitboxScale;
                 const hitboxX = rect1.x + (rect1.width - hitboxWidth) / 2;
@@ -614,9 +634,10 @@
                 // Check if player has reached the top rainbow zone
                 const rainbowZoneHeight = 50;
                 const playerTopY = player.y;
+                const playerBottomY = player.y + player.height;
                 
                 // Score if any part of the player enters the top rainbow zone
-                if (playerTopY <= rainbowZoneHeight && !landingTimer) {
+                if ((playerTopY <= rainbowZoneHeight || playerBottomY <= rainbowZoneHeight) && !landingTimer) {
                     score++;
                     updateLevel();
                     document.getElementById('score').textContent = score;

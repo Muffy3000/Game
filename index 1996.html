@@ -292,8 +292,8 @@
             let allTimeHigh = JSON.parse(localStorage.getItem('froggerAllTimeHigh')) || { score: 0, player: 'None' };
 
             // Sound effect for collision
-            const collisionSound = new Audio('757898__audiopapkin__sound-design-elements-impact-sfx-ps-022.wav');
-            collisionSound.volume = 0.3;
+            const collisionSound = new Audio('heavy-cineamtic-hit-166888.mp3');
+            collisionSound.volume = 0.5;
 
             // Sound effect function
             async function playCollisionSound() {
@@ -305,30 +305,9 @@
                 }
             }
 
-            // Sound effects setup
-            const jumpSound = new Audio('714257__qubodup__puff-of-smoke.wav');
-            jumpSound.volume = 0.3;
-
-            const scoreSound = new Audio('cha-ching-7053.mp3');
-            scoreSound.volume = 0.4;
-
-            async function playJumpSound() {
-                try {
-                    jumpSound.currentTime = 0;
-                    await jumpSound.play();
-                } catch (e) {
-                    console.log('Audio play failed:', e);
-                }
-            }
-
-            async function playScoreSound() {
-                try {
-                    scoreSound.currentTime = 0;
-                    await scoreSound.play();
-                } catch (e) {
-                    console.log('Audio play failed:', e);
-                }
-            }
+            // Empty functions for other sounds
+            function playJumpSound() {}
+            function playScoreSound() {}
 
             // Obstacles setup
             const BASE_SPEED = 1.0;
@@ -612,25 +591,25 @@
                     case 'up':
                         // Allow moving into rainbow zone
                         if (player.y - player.speed >= -15) { // Allow sushi to go slightly into rainbow zone
-                            player.y -= player.speed * 100;
+                            player.y -= player.speed * 25;
                             moved = true;
                         }
                         break;
                     case 'down':
                         if (player.y + player.speed + player.height <= canvas.height) {
-                            player.y += player.speed * 25;
+                            player.y += player.speed * 8;
                             moved = true;
                         }
                         break;
                     case 'left':
                         if (player.x - player.speed >= 0) {
-                            player.x -= player.speed * 25;
+                            player.x -= player.speed * 8;
                             moved = true;
                         }
                         break;
                     case 'right':
                         if (player.x + player.speed + player.width <= canvas.width) {
-                            player.x += player.speed * 25;
+                            player.x += player.speed * 8;
                             moved = true;
                         }
                         break;
@@ -650,7 +629,6 @@
                     player.hasPoint = true; // Set invulnerability
                     updateLevel();
                     document.getElementById('score').textContent = score;
-                    playScoreSound();
                     startLandingTimer();
                 }
             }

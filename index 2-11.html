@@ -44,6 +44,7 @@
 
         #gameCanvas {
             background-color: #000;
+            border: 2px solid #666;
         }
 
         #volumeDisplay {
@@ -291,17 +292,11 @@
             let bestTimes = JSON.parse(localStorage.getItem('froggerBestTimes')) || [];
             let allTimeHigh = JSON.parse(localStorage.getItem('froggerAllTimeHigh')) || { score: 0, player: 'None' };
 
-            // Sound effects setup
-            const collisionSound = new Audio('714257__qubodup__puff-of-smoke.wav');
-            const jumpSound = new Audio('cash-register-purchase-87313.mp3');
-            const scoreSound = new Audio('cha-ching-7053.mp3');
+            // Sound effect for collision
+            const collisionSound = new Audio('heavy-cineamtic-hit-166888.mp3');
+            collisionSound.volume = 0.5;
 
-            // Set fixed volumes for sound effects (independent of volume slider)
-            jumpSound.volume = 0.3;  // Quieter since it plays often
-            collisionSound.volume = 1.0; // Full volume for impact feedback
-            scoreSound.volume = 1.0; // Full volume for achievement feedback
-            
-            // Sound effect functions
+            // Sound effect function
             async function playCollisionSound() {
                 try {
                     collisionSound.currentTime = 0;
@@ -311,23 +306,9 @@
                 }
             }
 
-            async function playJumpSound() {
-                try {
-                    jumpSound.currentTime = 0;
-                    await jumpSound.play();
-                } catch (e) {
-                    console.log('Audio play failed:', e);
-                }
-            }
-
-            async function playScoreSound() {
-                try {
-                    scoreSound.currentTime = 0;
-                    await scoreSound.play();
-                } catch (e) {
-                    console.log('Audio play failed:', e);
-                }
-            }
+            // Empty functions for other sounds
+            function playJumpSound() {}
+            function playScoreSound() {}
 
             // Obstacles setup
             const BASE_SPEED = 1.0;
@@ -340,18 +321,21 @@
 
             // Load sushi image and set up dynamic sizing
             const sushiImage = new Image();
-            let playerSize = { width: canvas.width * 0.48, height: canvas.width * 0.48 }; // Initial size before image loads
+            let playerSize = { width: 40, height: 40 }; // Initial size before image loads
             
             // Calculate base size from obstacles and canvas
-            const baseSize = canvas.width * 0.48; // Exactly 48% of canvas width
+            const baseSize = Math.max(
+                Math.max(...lanes.map(lane => lane.width)), // Largest obstacle width
+                canvas.width * 0.50 // 50% of canvas width for a larger, more visible sushi
+            );
 
             // Player setup with dynamic sizing
             const player = {
                 x: canvas.width / 2 - baseSize / 2,
-                y: canvas.height - baseSize / 2, // Start at bottom
+                y: canvas.height - baseSize / 2 - 35, // Start deeper within bottom rainbow
                 width: baseSize,
                 height: baseSize,
-                speed: 20,
+                speed: 30,
                 lives: 3,
                 isColliding: false,
                 collisionTime: 0
@@ -367,7 +351,7 @@
                 player.width = playerSize.width;
                 player.height = playerSize.height;
                 player.x = canvas.width / 2 - playerSize.width / 2;
-                player.y = canvas.height - playerSize.height; // Start at bottom
+                player.y = canvas.height - playerSize.height - 35; // Start deeper within bottom rainbow
             };
             sushiImage.src = 'Untitled design (3).png';
             
@@ -380,11 +364,8 @@
             const bgMusic = document.getElementById('bgMusic');
             let currentVolume = parseFloat(localStorage.getItem('gameVolume')) || 0.5;
 
-            // Set initial volume for background music and respect muted state
+            // Set initial volume for background music
             bgMusic.volume = currentVolume;
-            if (currentVolume === 0) {
-                bgMusic.pause(); // Keep music paused if volume was 0
-            }
 
             // Update volume slider visuals
             function updateVolumeSlider() {
@@ -397,18 +378,9 @@
                 }
             }
 
-            // Volume control function (affects only background music)
+            // Volume control function
             function updateVolume(increase) {
-                const previousVolume = currentVolume;
                 currentVolume = Math.max(0, Math.min(1, currentVolume + (increase ? 0.1 : -0.1)));
-                
-                // Handle muting/unmuting
-                if (currentVolume === 0) {
-                    bgMusic.pause(); // Actually pause the music at 0%
-                } else if (previousVolume === 0 && currentVolume > 0) {
-                    bgMusic.play().catch(e => console.log('Audio play failed:', e)); // Resume when unmuting
-                }
-                
                 bgMusic.volume = currentVolume;
                 document.getElementById('volumeDisplay').textContent = Math.round(currentVolume * 100);
                 localStorage.setItem('gameVolume', currentVolume);
@@ -426,20 +398,13 @@
 
             // Audio event listeners
             document.addEventListener('click', () => {
-                // Only play music if volume is not 0
-                if (currentVolume > 0) {
-                    bgMusic.play().then(() => {
-                        document.getElementById('volumeControls').style.display = 'block';
-                        updateVolumeSlider();
-                    }).catch(e => {
-                        console.log('Audio play failed:', e);
-                        document.getElementById('volumeControls').style.display = 'none';
-                    });
-                } else {
-                    // Just show controls if muted
+                bgMusic.play().then(() => {
                     document.getElementById('volumeControls').style.display = 'block';
                     updateVolumeSlider();
-                }
+                }).catch(e => {
+                    console.log('Audio play failed:', e);
+                    document.getElementById('volumeControls').style.display = 'none';
+                });
             });
 
             bgMusic.addEventListener('loadeddata', () => {
@@ -584,14 +549,8 @@
             }
 
             function checkCollision(rect1, rect2) {
-                // Don't check collisions if player is in rainbow zone
-                const rainbowZoneHeight = 50;
-                if (rect1.y <= rainbowZoneHeight) {
-                    return false;
-                }
-
-                // Use a smaller hitbox (10% of visual size) for more forgiving collisions
-                const hitboxScale = 0.10;
+                // Use a smaller hitbox (15% of visual size) for more accurate collisions
+                const hitboxScale = 0.15;
                 const hitboxWidth = rect1.width * hitboxScale;
                 const hitboxHeight = rect1.height * hitboxScale;
                 const hitboxX = rect1.x + (rect1.width - hitboxWidth) / 2;
@@ -618,7 +577,7 @@
                         landingTimer = null;
                         timerElement.style.opacity = '0';
                         canMove = true;
-                        player.y = canvas.height - player.height; // Reset to bottom
+                        player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
                     }
                 }, 1000);
             }
@@ -627,25 +586,31 @@
                 if (gameOver || !canMove) return;
 
                 let moved = false;
-                // Move in fixed increments like original Frogger
-                const gridSize = 40; // Increased for faster movement
                 switch(direction) {
                     case 'up':
-                        // Allow moving fully into rainbow zone
-                        player.y = Math.max(-20, player.y - gridSize); // Allow more overlap with top for better visibility
-                        moved = true;
+                        // Add boundary check for upward movement
+                        if (player.y - player.speed >= 0) {
+                            player.y -= player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'down':
-                        player.y = Math.min(canvas.height - player.height, player.y + gridSize);
-                        moved = true;
+                        if (player.y + player.speed + player.height <= canvas.height) {
+                            player.y += player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'left':
-                        player.x = Math.max(0, player.x - gridSize);
-                        moved = true;
+                        if (player.x - player.speed >= 0) {
+                            player.x -= player.speed;
+                            moved = true;
+                        }
                         break;
                     case 'right':
-                        player.x = Math.min(canvas.width - player.width, player.x + gridSize);
-                        moved = true;
+                        if (player.x + player.speed + player.width <= canvas.width) {
+                            player.x += player.speed;
+                            moved = true;
+                        }
                         break;
                 }
 
@@ -656,9 +621,10 @@
                 // Check if player has reached the top rainbow zone
                 const rainbowZoneHeight = 50;
                 const playerTopY = player.y;
+                const playerBottomY = player.y + player.height;
                 
-                // Score if the player fully enters the rainbow zone
-                if (playerTopY <= 0 && !landingTimer) {
+                // Score if player is mostly in the rainbow zone
+                if (playerTopY <= rainbowZoneHeight && playerBottomY <= rainbowZoneHeight + 20 && !landingTimer) {
                     score++;
                     updateLevel();
                     document.getElementById('score').textContent = score;
@@ -754,7 +720,7 @@
                         } else {
                             setTimeout(() => {
                                 player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height; // Reset to bottom
+                                player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
                                 player.isColliding = false;
                             }, 1000);
                         }
@@ -766,14 +732,8 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 // Draw safe zones with rainbow gradient based on level
-                if (player.y <= 0) {
-                    // Add golden glow when player reaches the top
-                    ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; // Golden glow
-                    ctx.fillRect(0, 0, canvas.width, 50);
-                } else {
-                    ctx.fillStyle = createRainbowGradient(0, currentLevel);
-                    ctx.fillRect(0, 0, canvas.width, 50);
-                }
+                ctx.fillStyle = createRainbowGradient(0, currentLevel);
+                ctx.fillRect(0, 0, canvas.width, 50);
                 ctx.fillStyle = createRainbowGradient(canvas.height - 50, currentLevel);
                 ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
@@ -846,77 +806,4 @@
 
             function resetGame() {
                 // Reset game state
-                score = 0;
-                currentLevel = 1;
-                player.lives = 3;
-                player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height; // Reset to bottom
-                gameOver = false;
-                particles = [];
-                player.isColliding = false;
-                gameStartTime = Date.now();
-
-                // Reset UI
-                document.getElementById('score').textContent = score;
-                document.getElementById('lives').textContent = player.lives;
-                document.getElementById('level').textContent = currentLevel;
-            }
-
-            function gameLoop() {
-                update();
-                draw();
-                requestAnimationFrame(gameLoop);
-            }
-
-            // Controls
-            document.addEventListener('keydown', (e) => {
-                if (gameOver) {
-                    if (e.key === 'Enter') {
-                        nameModal.style.display = 'block';
-                        return;
-                    }
-                }
-
-                switch(e.key) {
-                    case 'ArrowUp':
-                        movePlayer('up');
-                        break;
-                    case 'ArrowDown':
-                        movePlayer('down');
-                        break;
-                    case 'ArrowLeft':
-                        movePlayer('left');
-                        break;
-                    case 'ArrowRight':
-                        movePlayer('right');
-                        break;
-                }
-            });
-
-            // Show name modal initially
-            const nameModal = document.getElementById('nameModal');
-            nameModal.style.display = 'block';
-
-            // Display initial scores
-            displayScores();
-
-            // Make startGame function globally accessible
-            window.startGame = async function() {
-                const input = document.getElementById('playerName');
-                playerName = input.value.trim() || 'Player';
-                nameModal.style.display = 'none';
-                resetGame();
-                
-                // Only play music if not muted
-                if (currentVolume > 0) {
-                    bgMusic.play().catch(e => console.log('Audio play failed:', e));
-                }
-                
-                // Always start a new game loop
-                gameLoopStarted = true;
-                requestAnimationFrame(gameLoop);
-            };
-        });
-    </script>
-</body>
-</html>
+                score = 0
