@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Frogger Game with Music</title>
     <style>
-        /* All existing styles remain the same */
+        /* Previous styles remain the same */
         body {
             margin: 0;
             display: flex;
@@ -18,24 +18,28 @@
 
         .game-container {
             display: flex;
-            gap: 15px;
-            align-items: flex-start;
-            max-height: 600px;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            height: 600px;
         }
 
         .game-info {
             color: white;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            padding: 15px;
+            padding: 10px;
             background: #FF69B4;
             border-radius: 10px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             text-align: center;
-            width: 180px;
+            width: 200px;
             height: 600px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .game-info div {
@@ -47,45 +51,41 @@
             border: 2px solid #666;
         }
 
-        #volumeDisplay {
-            font-size: 20px;
-        }
-
         .scoreboard {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 10px;
+            padding: 8px;
+            border-radius: 8px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
+            margin-bottom: 10px;
         }
 
         .current-score {
             background: linear-gradient(45deg, #FF69B4, #FF1493);
-            margin-bottom: 20px;
         }
 
         .combined-scores {
             background: #4169E1;
-            margin-bottom: 20px;
+            flex: 1;
+            margin: 10px 0;
+            overflow-y: auto;
         }
 
         .all-time-best {
             background: linear-gradient(45deg, #FFD700, #FFA500);
             color: black;
-            margin-bottom: 20px;
         }
 
         .scoreboard h3 {
-            margin: 0 0 8px 0;
-            font-size: 18px;
+            margin: 0 0 5px 0;
+            font-size: 16px;
             text-transform: uppercase;
             line-height: 1.2;
         }
 
         .scoreboard div {
-            font-size: 16px;
-            margin: 4px 0;
+            font-size: 14px;
+            margin: 2px 0;
             transition: opacity 0.3s ease;
         }
 
@@ -93,7 +93,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 2px 0;
+            padding: 3px 5px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 2px 0;
         }
 
         .best-label {
@@ -246,7 +249,8 @@
                 </div>
             </div>
             <div id="volumeControls" style="display: none;">
-                <div><span id="volumeDisplay">50</span>%</div>
+                <div style="font-size: 14px;">back ground volume</div>
+                <div style="font-size: 14px;"><span id="volumeDisplay">50</span>%</div>
                 <div class="volume-slider">
                     <div class="volume-slider-fill"></div>
                     <div class="volume-slider-handle"></div>
@@ -278,6 +282,26 @@
         let canMove = true;
         let playerName = '';
         let gameLoopStarted = false;
+        let topHalfStartTime = null;
+        let starActive = false;
+        let starX = null;
+        let starY = null;
+        let starsCollected = 0;
+        let starBonusScores = JSON.parse(localStorage.getItem('froggerStarBonus')) || [];
+
+        function updateStarBonusRecord() {
+            if (starsCollected > 0) {
+                starBonusScores.push({
+                    stars: starsCollected,
+                    time: ((Date.now() - gameStartTime) / 1000).toFixed(1),
+                    player: playerName
+                });
+                starBonusScores.sort((a, b) => b.stars - a.stars || parseFloat(a.time) - parseFloat(b.time));
+                starBonusScores = starBonusScores.slice(0, 3);
+                localStorage.setItem('froggerStarBonus', JSON.stringify(starBonusScores));
+                displayScores();
+            }
+        }
 
         // Initialize game
         document.addEventListener('DOMContentLoaded', () => {
@@ -292,17 +316,11 @@
             let bestTimes = JSON.parse(localStorage.getItem('froggerBestTimes')) || [];
             let allTimeHigh = JSON.parse(localStorage.getItem('froggerAllTimeHigh')) || { score: 0, player: 'None' };
 
-            // Sound effects setup
+            // Sound effect for collision
             const collisionSound = new Audio('757898__audiopapkin__sound-design-elements-impact-sfx-ps-022.wav');
-            const jumpSound = new Audio('714257__qubodup__puff-of-smoke.wav');
-            const scoreSound = new Audio('cha-ching-7053.mp3');
+            collisionSound.volume = 0.3;
 
-            // Set initial volumes
-            collisionSound.volume = 0.5;
-            jumpSound.volume = 0.3;
-            scoreSound.volume = 0.4;
-
-            // Sound effect functions
+            // Sound effect function
             async function playCollisionSound() {
                 try {
                     collisionSound.currentTime = 0;
@@ -311,6 +329,13 @@
                     console.log('Audio play failed:', e);
                 }
             }
+
+            // Sound effects setup
+            const jumpSound = new Audio('714257__qubodup__puff-of-smoke.wav');
+            jumpSound.volume = 0.3;
+
+            const scoreSound = new Audio('cha-ching-7053.mp3');
+            scoreSound.volume = 0.4;
 
             async function playJumpSound() {
                 try {
@@ -346,19 +371,20 @@
             // Calculate base size from obstacles and canvas
             const baseSize = Math.max(
                 Math.max(...lanes.map(lane => lane.width)), // Largest obstacle width
-                canvas.width * 0.48 // 48% of canvas width (20% increase from previous size)
+                canvas.width * 0.50 // 50% of canvas width for a larger, more visible sushi
             );
 
             // Player setup with dynamic sizing
             const player = {
                 x: canvas.width / 2 - baseSize / 2,
-                y: canvas.height - baseSize, // Start at bottom
+                y: canvas.height - baseSize / 2 - 35, // Start deeper within bottom rainbow
                 width: baseSize,
                 height: baseSize,
-                speed: 15, // Further reduced speed for even smoother movement
+                speed: 1.2,
                 lives: 3,
                 isColliding: false,
-                collisionTime: 0
+                collisionTime: 0,
+                hasPoint: false
             };
 
             // Handle image loading and sizing
@@ -371,7 +397,7 @@
                 player.width = playerSize.width;
                 player.height = playerSize.height;
                 player.x = canvas.width / 2 - playerSize.width / 2;
-                player.y = canvas.height - playerSize.height; // Start at bottom
+                player.y = canvas.height - player.height - 35; // Start deeper within bottom rainbow
             };
             sushiImage.src = 'Untitled design (3).png';
             
@@ -569,8 +595,8 @@
             }
 
             function checkCollision(rect1, rect2) {
-                // Use a smaller hitbox (10% of visual size) for more precise collision detection with larger player
-                const hitboxScale = 0.10;
+                // Use a smaller hitbox (15% of visual size) for more accurate collisions
+                const hitboxScale = 0.15;
                 const hitboxWidth = rect1.width * hitboxScale;
                 const hitboxHeight = rect1.height * hitboxScale;
                 const hitboxX = rect1.x + (rect1.width - hitboxWidth) / 2;
@@ -597,7 +623,8 @@
                         landingTimer = null;
                         timerElement.style.opacity = '0';
                         canMove = true;
-                player.y = canvas.height - player.height; // Reset at bottom
+                        player.y = canvas.height - player.height - 35; // Reset deeper into bottom rainbow
+                        player.hasPoint = false; // Remove invulnerability after landing
                     }
                 }, 1000);
             }
@@ -606,24 +633,36 @@
                 if (gameOver || !canMove) return;
 
                 let moved = false;
-                const moveAmount = player.speed;
                 
+                // Track when player enters top half of screen
+                if (!topHalfStartTime && player.y < canvas.height / 2) {
+                    topHalfStartTime = Date.now();
+                }
                 switch(direction) {
                     case 'up':
-                        player.y = Math.max(0, player.y - moveAmount);
-                        moved = true;
+                        // Allow moving into rainbow zone
+                        if (player.y - player.speed >= -50) { // Limit upward movement to just above top rainbow
+                            player.y -= player.speed * 30;
+                            moved = true;
+                        }
                         break;
                     case 'down':
-                        player.y = Math.min(canvas.height - player.height, player.y + moveAmount);
-                        moved = true;
+                        if (player.y + player.speed + player.height <= canvas.height) {
+                            player.y += player.speed * 25;
+                            moved = true;
+                        }
                         break;
                     case 'left':
-                        player.x = Math.max(0, player.x - moveAmount);
-                        moved = true;
+                        if (player.x - player.speed >= 0) {
+                            player.x -= player.speed * 25;
+                            moved = true;
+                        }
                         break;
                     case 'right':
-                        player.x = Math.min(canvas.width - player.width, player.x + moveAmount);
-                        moved = true;
+                        if (player.x + player.speed + player.width <= canvas.width) {
+                            player.x += player.speed * 25;
+                            moved = true;
+                        }
                         break;
                 }
 
@@ -634,11 +673,36 @@
                 // Check if player has reached the top rainbow zone
                 const rainbowZoneHeight = 50;
                 const playerTopY = player.y;
-                const playerBottomY = player.y + player.height;
                 
-                // Score if any part of the player enters the top rainbow zone
-                if ((playerTopY <= rainbowZoneHeight || playerBottomY <= rainbowZoneHeight) && !landingTimer) {
+                // Score if player is in the rainbow zone
+                if (playerTopY <= -30 && !landingTimer) { // Score when sushi reaches well into rainbow zone
+                    // Calculate time taken to reach top
+                    if (topHalfStartTime) {
+                        const timeTaken = (Date.now() - topHalfStartTime) / 1000; // Convert to seconds
+                        // Spawn star if player was fast enough
+                        // Always spawn a star when reaching the top quickly
+                        if (timeTaken < 5) { // Extended time window to 5 seconds
+                            const chance = Math.min(1, 0.8); // 80% chance to spawn a star
+                            if (Math.random() < chance) {
+                                starActive = true;
+                                starX = Math.random() * (canvas.width - 30);
+                                starY = canvas.height / 3 + Math.random() * (canvas.height / 3); // Spawn in middle third of screen
+                                
+                                // Make star disappear after 5 seconds if not collected
+                                setTimeout(() => {
+                                    if (starActive) {
+                                        starActive = false;
+                                        starX = null;
+                                        starY = null;
+                                        updateStarBonusRecord();
+                                    }
+                                }, 10000); // Extended star duration to 10 seconds
+                            }
+                        }
+                        topHalfStartTime = null; // Reset timer
+                    }
                     score++;
+                    player.hasPoint = true; // Set invulnerability
                     updateLevel();
                     document.getElementById('score').textContent = score;
                     playScoreSound();
@@ -647,25 +711,70 @@
             }
 
             function displayScores() {
-                // Combine scores and times
                 const combinedScoresDiv = document.getElementById('combinedScores');
-                const combinedEntries = highScores.map(score => {
-                    const timeEntry = bestTimes.find(time => time.player === score.player);
-                    return {
-                        player: score.player,
-                        score: score.score,
-                        time: timeEntry ? timeEntry.time : '---'
-                    };
-                });
+                
+                // Create separate sections for scores and times
+                let html = '<div class="scores-section">';
+                
+                // Top Scores Section
+                html += '<div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 12px;">';
+                html += '<h4 style="margin: 0 0 8px 0; font-size: 16px; color: #FFD700; text-transform: uppercase; text-shadow: 0 0 5px rgba(255,215,0,0.5);">Top Scores</h4>';
+                
+                if (highScores.length === 0) {
+                    html += '<div class="score-entry" style="opacity: 0.7;">No scores yet</div>';
+                } else {
+                    highScores.forEach(score => {
+                        html += `
+                            <div class="score-entry" style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; margin: 4px 0;">
+                                <span>${score.player}</span>
+                                <span>${score.score}</span>
+                            </div>`;
+                    });
+                }
+                html += '</div>';
 
-                combinedScoresDiv.innerHTML = combinedEntries
-                    .map((entry, index) => `
-                        <div class="score-entry">
-                            <span>${entry.player}</span>
-                            <span>${entry.score} (${entry.time}s)</span>
-                        </div>
-                    `)
-                    .join('');
+                // Add separator
+                html += '<hr style="border: none; height: 2px; background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent); margin: 12px 0;">';
+
+                // Fastest Times Section
+                html += '<div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
+                html += '<h4 style="margin: 0 0 8px 0; font-size: 16px; color: #FFD700; text-transform: uppercase; text-shadow: 0 0 5px rgba(255,215,0,0.5);">Fastest Times</h4>';
+                
+                if (bestTimes.length === 0) {
+                    html += '<div class="score-entry" style="opacity: 0.7;">No times yet</div>';
+                } else {
+                    bestTimes.forEach(time => {
+                        html += `
+                            <div class="score-entry" style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; margin: 4px 0;">
+                                <span>${time.player}</span>
+                                <span>${time.time}s</span>
+                            </div>`;
+                    });
+                }
+                html += '</div>';
+
+                // Add separator
+                html += '<hr style="border: none; height: 2px; background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent); margin: 12px 0;">';
+
+                // Star Bonus Section
+                html += '<div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
+                html += '<h4 style="margin: 0 0 8px 0; font-size: 16px; color: #FFD700; text-transform: uppercase; text-shadow: 0 0 5px rgba(255,215,0,0.5);">Star Bonus Records</h4>';
+                
+                if (starBonusScores.length === 0) {
+                    html += '<div class="score-entry" style="opacity: 0.7;">No star records yet</div>';
+                } else {
+                    starBonusScores.forEach(record => {
+                        html += `
+                            <div class="score-entry" style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; margin: 4px 0;">
+                                <span>${record.player} (${record.stars} stars)</span>
+                                <span>${record.time}s</span>
+                            </div>`;
+                    });
+                }
+                html += '</div>';
+                html += '</div>';
+
+                combinedScoresDiv.innerHTML = html;
 
                 // Display all-time high
                 const allTimeHighDiv = document.getElementById('allTimeHigh');
@@ -685,8 +794,8 @@
 
                 // Update best times if player scored points
                 if (newScore > 0) {
-                    const gameTime = (Date.now() - gameStartTime) / 1000;
-                    bestTimes.push({ time: gameTime.toFixed(1), player: playerName });
+                    const gameTime = ((Date.now() - gameStartTime) / 1000).toFixed(1);
+                    bestTimes.push({ time: gameTime, player: playerName });
                     bestTimes.sort((a, b) => parseFloat(a.time) - parseFloat(b.time));
                     bestTimes = bestTimes.slice(0, 3);
                     localStorage.setItem('froggerBestTimes', JSON.stringify(bestTimes));
@@ -698,9 +807,14 @@
                     localStorage.setItem('froggerAllTimeHigh', JSON.stringify(allTimeHigh));
                 }
 
+                // Update star bonus records
+                updateStarBonusRecord();
+
+                // Display updated scores
                 displayScores();
             }
 
+            // Game loop
             function update() {
                 if (gameOver) return;
 
@@ -710,180 +824,183 @@
 
                 const speedMultiplier = getSpeedMultiplier();
 
+                // Check star collection
+                if (starActive) {
+                    const starHitbox = {
+                        x: starX,
+                        y: starY,
+                        width: 30,
+                        height: 30
+                    };
+                    
+                    if (checkCollision(player, starHitbox)) {
+                        starActive = false;
+                        starX = null;
+                        starY = null;
+                        score += 20; // Increased bonus points for collecting star
+                        starsCollected++;
+                        player.lives++; // Add extra life
+                        // Show "MAN UP" text
+                        const levelUpText = document.getElementById('levelUpText');
+                        levelUpText.textContent = 'MAN UP!';
+                        levelUpText.style.opacity = '1';
+                        setTimeout(() => {
+                            levelUpText.style.opacity = '0';
+                            levelUpText.textContent = 'Level Up!'; // Reset text
+                        }, 2000);
+                        document.getElementById('score').textContent = score;
+                        document.getElementById('lives').textContent = player.lives;
+                        playScoreSound();
+                        createHeartExplosion(starX + 15, starY + 15);
+                        updateStarBonusRecord();
+                    }
+                }
+
                 // Update obstacles
                 obstacles.forEach(obstacle => {
                     obstacle.x += obstacle.speed * obstacle.direction * speedMultiplier;
-                    if (obstacle.direction === 1 && obstacle.x > canvas.width) {
+                    if (obstacle.direction > 0 && obstacle.x > canvas.width) {
                         obstacle.x = -obstacle.width;
-                    } else if (obstacle.direction === -1 && obstacle.x + obstacle.width < 0) {
+                    } else if (obstacle.direction < 0 && obstacle.x + obstacle.width < 0) {
                         obstacle.x = canvas.width;
                     }
 
-                    // Check collision
-                    if (checkCollision(player, obstacle) && !player.isColliding) {
-                        player.isColliding = true;
-                        player.collisionTime = Date.now();
-                        createHeartExplosion(player.x + player.width / 2, player.y + player.height / 2);
-                        playCollisionSound();
+                    // Check collision with player if not invulnerable
+                    if (!player.hasPoint && !player.isColliding && checkCollision(player, obstacle)) {
                         player.lives--;
                         document.getElementById('lives').textContent = player.lives;
+                        player.isColliding = true;
+                        player.collisionTime = Date.now();
+                        playCollisionSound();
+                        createHeartExplosion(player.x + player.width / 2, player.y + player.height / 2);
+
                         if (player.lives <= 0) {
                             gameOver = true;
                             updateHighScores(score);
-                        } else {
-                            setTimeout(() => {
-                                player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height; // Reset at bottom
-                                player.isColliding = false;
-                            }, 1000);
+                            displayScores();
+                            document.getElementById('nameModal').style.display = 'block';
                         }
                     }
                 });
+
+                // Reset collision state after a delay
+                if (player.isColliding && Date.now() - player.collisionTime > 1000) {
+                    player.isColliding = false;
+                }
             }
 
             function draw() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Draw safe zones with rainbow gradient based on level
+                // Draw rainbow zones
                 ctx.fillStyle = createRainbowGradient(0, currentLevel);
                 ctx.fillRect(0, 0, canvas.width, 50);
                 ctx.fillStyle = createRainbowGradient(canvas.height - 50, currentLevel);
                 ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
-                // Draw obstacles
+                // Draw obstacles with decorations
                 obstacles.forEach(obstacle => {
-                    // Draw obstacle background
                     ctx.fillStyle = obstacle.color;
                     ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                    
-                    // Draw main symbol
-                    ctx.fillStyle = 'white';
-                    ctx.font = '20px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(obstacle.symbol, 
-                        obstacle.x + obstacle.width / 2, 
-                        obstacle.y + obstacle.height / 2 + 7);
-                    
-                    // Draw decorative elements
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                    obstacle.decorations.forEach(dec => {
+
+                    // Draw decorations
+                    obstacle.decorations.forEach(decoration => {
                         ctx.save();
-                        ctx.translate(obstacle.x + dec.offsetX, obstacle.y + dec.offsetY);
-                        ctx.rotate(dec.rotation);
-                        ctx.font = `${dec.size}px Arial`;
-                        ctx.fillText(dec.symbol, 0, 0);
+                        ctx.translate(obstacle.x + decoration.offsetX, obstacle.y + decoration.offsetY);
+                        ctx.rotate(decoration.rotation);
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.font = `${decoration.size}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText(decoration.symbol, 0, 0);
                         ctx.restore();
-                        
-                        // Update rotation for animation
-                        dec.rotation += 0.02;
                     });
                 });
 
-                // Draw player
-                if (player.isColliding) {
-                    // Draw heart during collision
-                    ctx.fillStyle = '#FF69B4';
+                // Draw star if active
+                if (starActive) {
+                    ctx.save();
+                    ctx.translate(starX + 15, starY + 15);
+                    ctx.rotate(Date.now() / 1000);
+                    ctx.fillStyle = '#FFD700';
                     ctx.font = '30px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('♥', player.x + player.width / 2, player.y + player.height / 2 + 10);
-                } else if (sushiImage.complete) {
-                    // Draw sushi image with shadow for depth
-                    ctx.save();
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-                    ctx.shadowBlur = 5;
-                    ctx.shadowOffsetY = 2;
-                    ctx.drawImage(sushiImage, player.x, player.y, playerSize.width, playerSize.height);
+                    ctx.fillText('★', 0, 0);
                     ctx.restore();
+                }
+
+                // Draw player (sushi)
+                if (sushiImage.complete && sushiImage.naturalWidth !== 0) {
+                    ctx.drawImage(sushiImage, player.x, player.y, player.width, player.height);
                 } else {
-                    // Fallback to rectangle if image not loaded
+                    // Fallback rectangle if image fails to load
                     ctx.fillStyle = '#FF69B4';
-                    ctx.fillRect(player.x, player.y, playerSize.width, playerSize.height);
+                    ctx.fillRect(player.x, player.y, player.width, player.height);
                 }
 
                 // Draw particles
                 particles.forEach(p => p.draw(ctx));
-
-                // Draw game over screen
-                if (gameOver) {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = 'white';
-                    ctx.font = '48px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2);
-                    ctx.font = '24px Arial';
-                    ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
-                    ctx.fillText('Press Enter to restart', canvas.width / 2, canvas.height / 2 + 80);
-                }
-            }
-
-            function resetGame() {
-                // Reset game state
-                score = 0;
-                currentLevel = 1;
-                player.lives = 3;
-                player.x = canvas.width / 2 - player.width / 2;
-                player.y = canvas.height - player.height; // Reset at bottom
-                gameOver = false;
-                particles = [];
-                player.isColliding = false;
-                gameStartTime = Date.now();
-
-                // Reset UI
-                document.getElementById('score').textContent = score;
-                document.getElementById('lives').textContent = player.lives;
-                document.getElementById('level').textContent = currentLevel;
             }
 
             function gameLoop() {
+                if (!gameLoopStarted) return;
                 update();
                 draw();
                 requestAnimationFrame(gameLoop);
             }
 
-            // Controls
+            // Keyboard controls
             document.addEventListener('keydown', (e) => {
-                if (gameOver) {
-                    if (e.key === 'Enter') {
-                        nameModal.style.display = 'block';
-                        return;
-                    }
-                }
+                if (gameOver) return;
 
                 switch(e.key) {
                     case 'ArrowUp':
+                    case 'w':
                         movePlayer('up');
                         break;
                     case 'ArrowDown':
+                    case 's':
                         movePlayer('down');
                         break;
                     case 'ArrowLeft':
+                    case 'a':
                         movePlayer('left');
                         break;
                     case 'ArrowRight':
+                    case 'd':
                         movePlayer('right');
                         break;
                 }
             });
 
-            // Show name modal initially
-            const nameModal = document.getElementById('nameModal');
-            nameModal.style.display = 'block';
-
-            // Display initial scores
-            displayScores();
-
-            // Make startGame function globally accessible
-            window.startGame = async function() {
+            // Start game function
+            window.startGame = function() {
                 const input = document.getElementById('playerName');
-                playerName = input.value.trim() || 'Player';
-                nameModal.style.display = 'none';
-                resetGame();
+                playerName = input.value.trim() || 'Anonymous';
+                document.getElementById('nameModal').style.display = 'none';
                 
-                // Always start a new game loop
-                gameLoopStarted = true;
-                requestAnimationFrame(gameLoop);
+                // Reset game state
+                score = 0;
+                currentLevel = 1;
+                player.lives = 3;
+                gameOver = false;
+                player.isColliding = false;
+                player.hasPoint = false;
+                starsCollected = 0;
+                gameStartTime = Date.now();
+                document.getElementById('score').textContent = score;
+                document.getElementById('lives').textContent = player.lives;
+                document.getElementById('level').textContent = currentLevel;
+                
+                // Start game loop if not already started
+                if (!gameLoopStarted) {
+                    gameLoopStarted = true;
+                    gameLoop();
+                }
             };
+
+            // Show name modal on load
+            document.getElementById('nameModal').style.display = 'block';
+            displayScores();
         });
     </script>
 </body>

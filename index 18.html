@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Previous content remains exactly the same until the sushi image loading part -->
+
+            // Load sushi image and set up dynamic sizing
+            const sushiImage = new Image();
+            let playerSize = { width: 40, height: 40 }; // Initial size before image loads
+            
+            // Calculate base size from obstacles and canvas
+            const baseSize = Math.max(
+                Math.max(...lanes.map(lane => lane.width)), // Largest obstacle width
+                canvas.width * 0.50 // 50% of canvas width for a larger, more visible sushi
+            );
+
+            // Player setup with dynamic sizing
+            const player = {
+                x: canvas.width / 2 - baseSize / 2,
+                y: canvas.height - baseSize / 2 - 35, // Start deeper within bottom rainbow
+                width: baseSize,
+                height: baseSize,
+                speed: 1.2,
+                lives: 3,
+                isColliding: false,
+                collisionTime: 0,
+                hasPoint: false
+            };
+
+            // Handle image loading and sizing
+            sushiImage.onload = function() {
+                console.log('Sushi image loaded successfully');
+                const aspectRatio = sushiImage.naturalWidth / sushiImage.naturalHeight;
+                playerSize = {
+                    width: baseSize,
+                    height: baseSize / aspectRatio
+                };
+                player.width = playerSize.width;
+                player.height = playerSize.height;
+                player.x = canvas.width / 2 - playerSize.width / 2;
+                player.y = canvas.height - player.height - 35;
+            };
+            sushiImage.onerror = function(e) {
+                console.error('Failed to load sushi image:', e);
+            };
+            console.log('Loading sushi image from:', 'Untitled design (3).png');
+            sushiImage.src = 'Untitled design (3).png';
+
+            // Rest of the code remains the same until the draw function
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw rainbow zones
+                ctx.fillStyle = createRainbowGradient(0, currentLevel);
+                ctx.fillRect(0, 0, canvas.width, 50);
+                ctx.fillStyle = createRainbowGradient(canvas.height - 50, currentLevel);
+                ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+                // Draw obstacles with decorations
+                obstacles.forEach(obstacle => {
+                    ctx.fillStyle = obstacle.color;
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+
+                    // Draw decorations
+                    obstacle.decorations.forEach(decoration => {
+                        ctx.save();
+                        ctx.translate(obstacle.x + decoration.offsetX, obstacle.y + decoration.offsetY);
+                        ctx.rotate(decoration.rotation);
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.font = `${decoration.size}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText(decoration.symbol, 0, 0);
+                        ctx.restore();
+                    });
+                });
+
+                // Draw star if active
+                if (starActive) {
+                    ctx.save();
+                    ctx.translate(starX + 15, starY + 15);
+                    ctx.rotate(Date.now() / 1000);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.font = '30px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('★', 0, 0);
+                    ctx.restore();
+                }
+
+                // Draw player (sushi)
+                if (sushiImage.complete && sushiImage.naturalWidth !== 0) {
+                    ctx.drawImage(sushiImage, player.x, player.y, player.width, player.height);
+                } else {
+                    // Fallback rectangle if image fails to load
+                    console.log('Using fallback rectangle for sushi');
+                    ctx.fillStyle = '#FF69B4';
+                    ctx.fillRect(player.x, player.y, player.width, player.height);
+                }
+
+                // Draw particles
+                particles.forEach(p => p.draw(ctx));
+            }
+
+            // Rest of the code remains exactly the same...
+
+            // Start game function
+            window.startGame = function() {
+                const input = document.getElementById('playerName');
+                playerName = input.value.trim() || 'Anonymous';
+                document.getElementById('nameModal').style.display = 'none';
+                
+                // Reset game state
+                score = 0;
+                currentLevel = 1;
+                player.lives = 3;
+                gameOver = false;
+                player.isColliding = false;
+                player.hasPoint = false;
+                starsCollected = 0;
+                gameStartTime = Date.now();
+                document.getElementById('score').textContent = score;
+                document.getElementById('lives').textContent = player.lives;
+                document.getElementById('level').textContent = currentLevel;
+
+                // Clear any existing star spawn interval and timeout
+                if (starSpawnInterval) {
+                    clearInterval(starSpawnInterval);
+                    starSpawnInterval = null;
+                }
+                if (starSpawnTimeout) {
+                    clearTimeout(starSpawnTimeout);
+                    starSpawnTimeout = null;
+                }
+
+                console.log('Game started, first star will appear in 7 seconds...');
+
+                // Set up star spawning interval with fixed timing
+                starSpawnTimeout = setTimeout(() => {
+                    const spawnStar = () => {
+                        if (!gameOver) {
+                            console.log('Spawning star...');
+                            starActive = true;
+                            starX = Math.random() * (canvas.width - 30);
+                            // Spawn star between lanes for better accessibility
+                            const laneGaps = [150, 250, 350]; // Y positions between lanes
+                            starY = laneGaps[Math.floor(Math.random() * laneGaps.length)];
+                            console.log('Star spawned at:', starX, starY);
+                            
+                            // Make star disappear after exactly 7 seconds
+                            setTimeout(() => {
+                                if (starActive) {
+                                    console.log('Star disappearing after 7 seconds...');
+                                    starActive = false;
+                                    starX = null;
+                                    starY = null;
+                                }
+                            }, 7000); // Star stays for exactly 7 seconds
+                        }
+                    };
+                    
+                    spawnStar(); // Spawn first star after 7 seconds
+                    console.log('Setting up 15-second star spawn interval...');
+                    starSpawnInterval = setInterval(() => {
+                        console.log('15 seconds passed, spawning new star...');
+                        spawnStar();
+                    }, 15000); // Spawn new star every 15 seconds
+                }, 7000); // Start first spawn after 7 seconds
+
+                // Start game loop if not already started
+                if (!gameLoopStarted) {
+                    gameLoopStarted = true;
+                    gameLoop();
+                }
+            };
+
+            // Rest of the code remains exactly the same...
+        });
+    </script>
+</body>
+</html>
+                { y: 200, speed: BASE_SPEED, width: 80, direction: -1, color: '#4169E1', symbol: '★' },
