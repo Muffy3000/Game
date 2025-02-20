@@ -1,179 +1,365 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Previous content remains exactly the same until the sushi image loading part -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frogger Game with Music</title>
+    <style>
+        /* Previous styles remain exactly the same */
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #333;
+            font-family: Arial, sans-serif;
+        }
 
-            // Load sushi image and set up dynamic sizing
-            const sushiImage = new Image();
-            let playerSize = { width: 40, height: 40 }; // Initial size before image loads
-            
-            // Calculate base size from obstacles and canvas
-            const baseSize = Math.max(
-                Math.max(...lanes.map(lane => lane.width)), // Largest obstacle width
-                canvas.width * 0.50 // 50% of canvas width for a larger, more visible sushi
-            );
+        .game-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            height: 600px;
+        }
 
-            // Player setup with dynamic sizing
-            const player = {
-                x: canvas.width / 2 - baseSize / 2,
-                y: canvas.height - baseSize / 2 - 35, // Start deeper within bottom rainbow
-                width: baseSize,
-                height: baseSize,
-                speed: 1.2,
-                lives: 3,
-                isColliding: false,
-                collisionTime: 0,
-                hasPoint: false
-            };
+        .game-info {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 10px;
+            background: #FF69B4;
+            border-radius: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 200px;
+            height: 600px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
-            // Handle image loading and sizing
-            sushiImage.onload = function() {
-                console.log('Sushi image loaded successfully');
-                const aspectRatio = sushiImage.naturalWidth / sushiImage.naturalHeight;
-                playerSize = {
-                    width: baseSize,
-                    height: baseSize / aspectRatio
-                };
-                player.width = playerSize.width;
-                player.height = playerSize.height;
-                player.x = canvas.width / 2 - playerSize.width / 2;
-                player.y = canvas.height - player.height - 35;
-            };
-            sushiImage.onerror = function(e) {
-                console.error('Failed to load sushi image:', e);
-            };
-            console.log('Loading sushi image from:', 'Untitled design (3).png');
-            sushiImage.src = 'Untitled design (3).png';
+        .game-info div {
+            margin: 10px 0;
+        }
 
-            // Rest of the code remains the same until the draw function
+        #gameCanvas {
+            background-color: #000;
+            border: 2px solid #666;
+        }
 
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+        .scoreboard {
+            padding: 8px;
+            border-radius: 8px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
 
-                // Draw rainbow zones
-                ctx.fillStyle = createRainbowGradient(0, currentLevel);
-                ctx.fillRect(0, 0, canvas.width, 50);
-                ctx.fillStyle = createRainbowGradient(canvas.height - 50, currentLevel);
-                ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+        .current-score {
+            background: linear-gradient(45deg, #FF69B4, #FF1493);
+        }
 
-                // Draw obstacles with decorations
-                obstacles.forEach(obstacle => {
-                    ctx.fillStyle = obstacle.color;
-                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        .combined-scores {
+            background: #4169E1;
+            flex: 1;
+            margin: 10px 0;
+            overflow-y: auto;
+        }
 
-                    // Draw decorations
-                    obstacle.decorations.forEach(decoration => {
-                        ctx.save();
-                        ctx.translate(obstacle.x + decoration.offsetX, obstacle.y + decoration.offsetY);
-                        ctx.rotate(decoration.rotation);
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.font = `${decoration.size}px Arial`;
-                        ctx.textAlign = 'center';
-                        ctx.fillText(decoration.symbol, 0, 0);
-                        ctx.restore();
-                    });
+        .all-time-best {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: black;
+        }
+
+        .scoreboard h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
+
+        .scoreboard div {
+            font-size: 14px;
+            margin: 2px 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .score-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 5px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 2px 0;
+        }
+
+        .best-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            display: inline-block;
+        }
+
+        #nameModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .modal-content input {
+            margin: 10px 0;
+            padding: 5px;
+            font-size: 16px;
+        }
+
+        .modal-content button {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #4169E1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        #volumeControls {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .volume-slider {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            position: relative;
+            margin: 15px 0;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .volume-slider-handle {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .volume-slider-handle:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .volume-slider-fill {
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .level-up {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #FFD700;
+            font-size: 48px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .landing-timer {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFD700;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="nameModal">
+        <div class="modal-content">
+            <h2>Enter Your Name</h2>
+            <input type="text" id="playerName" maxlength="15" placeholder="Your name">
+            <button onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+
+    <div class="level-up" id="levelUpText">Level Up!</div>
+    <div class="landing-timer" id="landingTimer">3</div>
+
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="game-info">
+            <div class="scoreboard current-score">
+                <h3>Current Game</h3>
+                <div class="score-entry">
+                    <span>Score:</span>
+                    <span id="score">0</span>
+                </div>
+                <div class="score-entry">
+                    <span>Lives:</span>
+                    <span id="lives">3</span>
+                </div>
+                <div class="score-entry">
+                    <span>Level:</span>
+                    <span id="level">1</span>
+                </div>
+            </div>
+            <div id="volumeControls" style="display: none;">
+                <div style="font-size: 14px;">back ground volume</div>
+                <div style="font-size: 14px;"><span id="volumeDisplay">50</span>%</div>
+                <div class="volume-slider">
+                    <div class="volume-slider-fill"></div>
+                    <div class="volume-slider-handle"></div>
+                </div>
+            </div>
+            <div class="scoreboard combined-scores">
+                <h3>Top Scores and Fastest Times</h3>
+                <div id="combinedScores"></div>
+            </div>
+            <div class="scoreboard all-time-best">
+                <span class="best-label">Best Ever of All Time</span>
+                <div id="allTimeHigh">No record yet</div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="bgMusic" loop>
+        <source src="mystical-china-274004.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Game state variables
+        let score = 0;
+        let gameOver = false;
+        let currentLevel = 1;
+        let particles = [];
+        let gameStartTime = Date.now();
+        let landingTimer = null;
+        let canMove = true;
+        let playerName = '';
+        let gameLoopStarted = false;
+        let topHalfStartTime = null;
+        let starActive = false;
+        let starX = null;
+        let starY = null;
+        let starsCollected = 0;
+        let starBonusScores = JSON.parse(localStorage.getItem('froggerStarBonus')) || [];
+        let starSpawnInterval = null;
+        let starSpawnTimeout = null;
+
+        function updateStarBonusRecord() {
+            if (starsCollected > 0) {
+                starBonusScores.push({
+                    stars: starsCollected,
+                    time: ((Date.now() - gameStartTime) / 1000).toFixed(1),
+                    player: playerName
                 });
+                starBonusScores.sort((a, b) => b.stars - a.stars || parseFloat(a.time) - parseFloat(b.time));
+                starBonusScores = starBonusScores.slice(0, 3);
+                localStorage.setItem('froggerStarBonus', JSON.stringify(starBonusScores));
+                displayScores();
+            }
+        }
 
-                // Draw star if active
-                if (starActive) {
-                    ctx.save();
-                    ctx.translate(starX + 15, starY + 15);
-                    ctx.rotate(Date.now() / 1000);
-                    ctx.fillStyle = '#FFD700';
-                    ctx.font = '30px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('★', 0, 0);
-                    ctx.restore();
+        // Initialize game
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game setup
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 600;
+            canvas.height = 600;
+
+            // High scores management
+            let highScores = JSON.parse(localStorage.getItem('froggerHighScores')) || [];
+            let bestTimes = JSON.parse(localStorage.getItem('froggerBestTimes')) || [];
+            let allTimeHigh = JSON.parse(localStorage.getItem('froggerAllTimeHigh')) || { score: 0, player: 'None' };
+
+            // Sound effect for collision
+            const collisionSound = new Audio('757898__audiopapkin__sound-design-elements-impact-sfx-ps-022.wav');
+            collisionSound.volume = 0.3;
+
+            // Sound effect function
+            async function playCollisionSound() {
+                try {
+                    collisionSound.currentTime = 0;
+                    await collisionSound.play();
+                } catch (e) {
+                    console.log('Audio play failed:', e);
                 }
-
-                // Draw player (sushi)
-                if (sushiImage.complete && sushiImage.naturalWidth !== 0) {
-                    ctx.drawImage(sushiImage, player.x, player.y, player.width, player.height);
-                } else {
-                    // Fallback rectangle if image fails to load
-                    console.log('Using fallback rectangle for sushi');
-                    ctx.fillStyle = '#FF69B4';
-                    ctx.fillRect(player.x, player.y, player.width, player.height);
-                }
-
-                // Draw particles
-                particles.forEach(p => p.draw(ctx));
             }
 
-            // Rest of the code remains exactly the same...
+            // Sound effects setup
+            const jumpSound = new Audio('714257__qubodup__puff-of-smoke.wav');
+            jumpSound.volume = 0.3;
 
-            // Start game function
-            window.startGame = function() {
-                const input = document.getElementById('playerName');
-                playerName = input.value.trim() || 'Anonymous';
-                document.getElementById('nameModal').style.display = 'none';
-                
-                // Reset game state
-                score = 0;
-                currentLevel = 1;
-                player.lives = 3;
-                gameOver = false;
-                player.isColliding = false;
-                player.hasPoint = false;
-                starsCollected = 0;
-                gameStartTime = Date.now();
-                document.getElementById('score').textContent = score;
-                document.getElementById('lives').textContent = player.lives;
-                document.getElementById('level').textContent = currentLevel;
+            const scoreSound = new Audio('cha-ching-7053.mp3');
+            scoreSound.volume = 0.4;
 
-                // Clear any existing star spawn interval and timeout
-                if (starSpawnInterval) {
-                    clearInterval(starSpawnInterval);
-                    starSpawnInterval = null;
+            async function playJumpSound() {
+                try {
+                    jumpSound.currentTime = 0;
+                    await jumpSound.play();
+                } catch (e) {
+                    console.log('Audio play failed:', e);
                 }
-                if (starSpawnTimeout) {
-                    clearTimeout(starSpawnTimeout);
-                    starSpawnTimeout = null;
+            }
+
+            async function playScoreSound() {
+                try {
+                    scoreSound.currentTime = 0;
+                    await scoreSound.play();
+                } catch (e) {
+                    console.log('Audio play failed:', e);
                 }
+            }
 
-                console.log('Game started, first star will appear in 7 seconds...');
-
-                // Set up star spawning interval with fixed timing
-                starSpawnTimeout = setTimeout(() => {
-                    const spawnStar = () => {
-                        if (!gameOver) {
-                            console.log('Spawning star...');
-                            starActive = true;
-                            starX = Math.random() * (canvas.width - 30);
-                            // Spawn star between lanes for better accessibility
-                            const laneGaps = [150, 250, 350]; // Y positions between lanes
-                            starY = laneGaps[Math.floor(Math.random() * laneGaps.length)];
-                            console.log('Star spawned at:', starX, starY);
-                            
-                            // Make star disappear after exactly 7 seconds
-                            setTimeout(() => {
-                                if (starActive) {
-                                    console.log('Star disappearing after 7 seconds...');
-                                    starActive = false;
-                                    starX = null;
-                                    starY = null;
-                                }
-                            }, 7000); // Star stays for exactly 7 seconds
-                        }
-                    };
-                    
-                    spawnStar(); // Spawn first star after 7 seconds
-                    console.log('Setting up 15-second star spawn interval...');
-                    starSpawnInterval = setInterval(() => {
-                        console.log('15 seconds passed, spawning new star...');
-                        spawnStar();
-                    }, 15000); // Spawn new star every 15 seconds
-                }, 7000); // Start first spawn after 7 seconds
-
-                // Start game loop if not already started
-                if (!gameLoopStarted) {
-                    gameLoopStarted = true;
-                    gameLoop();
-                }
-            };
-
-            // Rest of the code remains exactly the same...
-        });
-    </script>
-</body>
-</html>
+            // Obstacles setup
+            const BASE_SPEED = 1.0;
+            const lanes = [
+                { y: 100, speed: BASE_SPEED, width: 60, direction: 1, color: '#FF69B4', symbol: '♥' },
                 { y: 200, speed: BASE_SPEED, width: 80, direction: -1, color: '#4169E1', symbol: '★' },
+                { y: 300, speed: BASE_SPEED, width: 50, direction: 1, color: '#800080', symbol: '♥' },
